@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowRight, Building2, Check, Loader2, User } from "lucide-react";
+import { ArrowRight, Building2, Check, Loader2, Sparkles, User, Users, Briefcase } from "lucide-react";
 import { QoneBrand } from "../../shared/components/QoneBrand";
 import {
   authApi,
@@ -15,6 +15,22 @@ const ROLE_LABELS: Record<Role, string> = {
   admin: "Administrateur",
   member: "Collaborateur",
 };
+
+const SECTORS = [
+  "Technologie & Logiciel",
+  "E-commerce & Retail",
+  "Conseil & Services",
+  "BTP & Industrie",
+  "Santé & Pharmacie",
+  "Autre",
+];
+
+const SIZES = [
+  "1 - 5 employés",
+  "6 - 20 employés",
+  "21 - 50 employés",
+  "50+ employés",
+];
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -35,14 +51,21 @@ export const RegisterPage: React.FC = () => {
   const [password, setPassword] = useState("");
   const [seedDemoData, setSeedDemoData] = useState(true);
 
+  // Onboarding wizard states
+  const [step, setStep] = useState<"form" | "customizing" | "animating">("form");
+  const [sector, setSector] = useState(SECTORS[0]);
+  const [teamSize, setTeamSize] = useState(SIZES[0]);
+  const [animProgress, setAnimProgress] = useState(0);
+  const [animMessage, setAnimMessage] = useState("Initialisation de l'espace...");
+
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated && !inviteToken) {
+    if (isAuthenticated && !inviteToken && step === "form") {
       navigate("/app", { replace: true });
     }
-  }, [isAuthenticated, inviteToken, navigate]);
+  }, [isAuthenticated, inviteToken, navigate, step]);
 
   useEffect(() => {
     if (!inviteToken) return;
@@ -101,7 +124,14 @@ export const RegisterPage: React.FC = () => {
         inviteToken: inviteToken || undefined,
         seedDemoData: !inviteToken && accountType === "company" ? seedDemoData : false,
       });
-      navigate("/app", { replace: true });
+
+      // If invite token, skip customization and go straight to app
+      if (inviteToken || accountType === "individual") {
+        navigate("/app", { replace: true });
+      } else {
+        // Show customization onboarding questions for company
+        setStep("customizing");
+      }
     } catch (err: unknown) {
       setError(
         err instanceof Error
@@ -112,6 +142,165 @@ export const RegisterPage: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+
+  const handleStartCustomization = () => {
+    setStep("animating");
+    setAnimProgress(20);
+    setAnimMessage(`Configuration du secteur ${sector}...`);
+
+    setTimeout(() => {
+      setAnimProgress(60);
+      setAnimMessage(`Préparation des modules pour ${teamSize}...`);
+    }, 900);
+
+    setTimeout(() => {
+      setAnimProgress(90);
+      setAnimMessage("Synchronisation de l'espace personnalisé...");
+    }, 1800);
+
+    setTimeout(() => {
+      setAnimProgress(100);
+      setAnimMessage("Votre espace est prêt !");
+    }, 2600);
+
+    setTimeout(() => {
+      navigate("/app", { replace: true });
+    }, 3200);
+  };
+
+  if (step === "customizing") {
+    return (
+      <div className="min-h-screen bg-canvas text-fg flex flex-col justify-between">
+        <header className="border-b border-line px-6 py-4 flex items-center justify-between">
+          <QoneBrand />
+          <span className="text-xs text-muted">Personnalisation (1/2)</span>
+        </header>
+
+        <div className="flex-1 flex items-center justify-center px-6 py-12">
+          <div className="w-full max-w-lg bg-panel border border-line p-8 space-y-6">
+            <div className="flex items-center gap-3 text-accent">
+              <Sparkles size={20} />
+              <span className="text-xs font-mono uppercase tracking-wider">Configuration de l'espace</span>
+            </div>
+
+            <div>
+              <h2 className="text-2xl font-medium tracking-tight">Personnalisons votre expérience qone</h2>
+              <p className="mt-2 text-xs text-muted leading-relaxed">
+                Ces 2 brèves informations nous permettent d'adapter les tableaux de bord et les indicateurs pour <span className="text-fg font-medium">{companyName || "votre entreprise"}</span>.
+              </p>
+            </div>
+
+            <div className="space-y-5 pt-2">
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-muted mb-2 flex items-center gap-2">
+                  <Briefcase size={13} /> Secteur d'activité principal
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {SECTORS.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setSector(s)}
+                      className={`px-3.5 py-3 text-xs text-left border transition-colors ${
+                        sector === s
+                          ? "border-fg bg-fg text-canvas font-medium"
+                          : "border-line bg-canvas text-muted hover:text-fg hover:border-line-strong"
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-muted mb-2 flex items-center gap-2">
+                  <Users size={13} /> Nombre d'employés dans l'équipe
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {SIZES.map((sz) => (
+                    <button
+                      key={sz}
+                      type="button"
+                      onClick={() => setTeamSize(sz)}
+                      className={`px-3.5 py-3 text-xs text-left border transition-colors ${
+                        teamSize === sz
+                          ? "border-fg bg-fg text-canvas font-medium"
+                          : "border-line bg-canvas text-muted hover:text-fg hover:border-line-strong"
+                      }`}
+                    >
+                      {sz}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleStartCustomization}
+              className="w-full flex items-center justify-center gap-2 bg-fg px-5 py-3.5 text-xs font-medium text-canvas transition-colors duration-300 hover:bg-[#dedede] mt-6"
+            >
+              <span>Générer mon espace personnalisé</span>
+              <ArrowRight size={14} />
+            </button>
+          </div>
+        </div>
+
+        <footer className="border-t border-line px-6 py-4 text-center text-[11px] text-faint">
+          © 2026 qone — Personnalisation intelligente
+        </footer>
+      </div>
+    );
+  }
+
+  if (step === "animating") {
+    return (
+      <div className="min-h-screen bg-canvas text-fg flex flex-col items-center justify-center px-6">
+        <div className="w-full max-w-md bg-panel border border-line p-10 text-center space-y-8">
+          {/* Animated SVG Loader */}
+          <div className="relative size-24 mx-auto flex items-center justify-center">
+            <svg className="animate-spin size-24 text-accent" viewBox="0 0 100 100" fill="none">
+              <circle
+                cx="50"
+                cy="50"
+                r="40"
+                stroke="currentColor"
+                strokeWidth="6"
+                strokeOpacity="0.15"
+              />
+              <path
+                d="M50 10 A40 40 0 0 1 90 50"
+                stroke="currentColor"
+                strokeWidth="6"
+                strokeLinecap="round"
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Sparkles size={28} className="text-fg animate-pulse" />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-xl font-medium tracking-tight">Création de votre application sur-mesure</h2>
+            <p className="text-xs text-muted font-mono">{animMessage}</p>
+          </div>
+
+          {/* Progress bar */}
+          <div className="w-full bg-canvas border border-line h-2 overflow-hidden">
+            <div
+              className="bg-fg h-full transition-all duration-500 ease-out"
+              style={{ width: `${animProgress}%` }}
+            />
+          </div>
+
+          <div className="text-[11px] text-faint">
+            Secteur : <span className="text-muted">{sector}</span> • Équipe : <span className="text-muted">{teamSize}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-canvas text-fg flex flex-col justify-between">
@@ -433,3 +622,4 @@ export const RegisterPage: React.FC = () => {
     </div>
   );
 };
+
