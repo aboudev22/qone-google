@@ -55,7 +55,7 @@ export const CaissePage: React.FC = () => {
   const [selectedClientId, setSelectedClientId] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Espèces");
   const [items, setItems] = useState<InvoiceItem[]>([
-    { id: "1", name: "Prestation de service / Conseil", quantity: 1, unitPrice: 25000 },
+    { id: "1", name: "", quantity: 1, unitPrice: 0 },
   ]);
 
   // Invoice preview state

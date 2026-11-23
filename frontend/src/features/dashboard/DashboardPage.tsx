@@ -282,32 +282,44 @@ export const DashboardPage: React.FC = () => {
             </div>
 
             <div className="space-y-3.5">
-              {charts.pipelineByStage.map((row) => {
-                const widthPct = Math.round((row.amount / maxPipelineAmount) * 100);
-                const barColor = STAGE_COLORS[row.stage] || "bg-indigo-500";
-                return (
-                  <div key={row.stage} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="flex items-center gap-2 text-muted">
-                        <span className={`size-2 rounded-full ${barColor}`} />
-                        <span>{row.label}</span>
-                        <span className="text-[11px] text-faint tabular-nums">
-                          ({row.count})
+              {charts.pipelineByStage.every((r) => r.amount === 0 && r.count === 0) ? (
+                <div className="py-8 text-center text-xs text-muted space-y-2">
+                  <p>Aucune opportunité commerciale enregistrée.</p>
+                  <Link
+                    to="/app/sales"
+                    className="text-fg underline decoration-line hover:decoration-fg inline-block text-[11px]"
+                  >
+                    Créer une première opportunité →
+                  </Link>
+                </div>
+              ) : (
+                charts.pipelineByStage.map((row) => {
+                  const widthPct = Math.round((row.amount / maxPipelineAmount) * 100);
+                  const barColor = STAGE_COLORS[row.stage] || "bg-indigo-500";
+                  return (
+                    <div key={row.stage} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-2 text-muted">
+                          <span className={`size-2 rounded-full ${barColor}`} />
+                          <span>{row.label}</span>
+                          <span className="text-[11px] text-faint tabular-nums">
+                            ({row.count})
+                          </span>
                         </span>
-                      </span>
-                      <span className="text-fg tabular-nums font-medium">
-                        {formatXaf(row.amount)}
-                      </span>
+                        <span className="text-fg tabular-nums font-medium">
+                          {formatXaf(row.amount)}
+                        </span>
+                      </div>
+                      <div className="h-2.5 w-full bg-canvas border border-line overflow-hidden rounded-sm">
+                        <div
+                          className={`h-full transition-all duration-500 ${barColor}`}
+                          style={{ width: `${row.amount > 0 ? Math.max(6, widthPct) : 0}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-2.5 w-full bg-canvas border border-line overflow-hidden rounded-sm">
-                      <div
-                        className={`h-full transition-all duration-500 ${barColor}`}
-                        style={{ width: `${row.amount > 0 ? Math.max(6, widthPct) : 0}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
 
@@ -331,33 +343,45 @@ export const DashboardPage: React.FC = () => {
                 </Link>
               </div>
 
-              <div className="grid grid-cols-4 gap-3 items-end h-28 pt-2">
-                {charts.tasksByStatus.map((item) => {
-                  const pct = Math.round((item.count / maxTaskCount) * 100);
-                  const taskBarColor = TASK_COLORS[item.status] || "bg-indigo-500";
-                  return (
-                    <div
-                      key={item.status}
-                      className="flex flex-col items-center justify-end h-full gap-1.5"
-                    >
-                      <span className="text-[11px] text-fg tabular-nums font-medium">
-                        {item.count}
-                      </span>
-                      <div className="w-full flex-1 bg-canvas border border-line flex items-end rounded-sm overflow-hidden">
-                        <div
-                          className={`w-full transition-all duration-500 ${taskBarColor}`}
-                          style={{
-                            height: `${item.count > 0 ? Math.max(14, pct) : 0}%`,
-                          }}
-                        />
+              {charts.tasksByStatus.every((t) => t.count === 0) ? (
+                <div className="py-6 text-center text-xs text-muted space-y-2">
+                  <p>Aucune tâche créée dans vos projets.</p>
+                  <Link
+                    to="/app/projects"
+                    className="text-fg underline decoration-line hover:decoration-fg inline-block text-[11px]"
+                  >
+                    Créer un projet et ajouter des tâches →
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 gap-3 items-end h-28 pt-2">
+                  {charts.tasksByStatus.map((item) => {
+                    const pct = Math.round((item.count / maxTaskCount) * 100);
+                    const taskBarColor = TASK_COLORS[item.status] || "bg-indigo-500";
+                    return (
+                      <div
+                        key={item.status}
+                        className="flex flex-col items-center justify-end h-full gap-1.5"
+                      >
+                        <span className="text-[11px] text-fg tabular-nums font-medium">
+                          {item.count}
+                        </span>
+                        <div className="w-full flex-1 bg-canvas border border-line flex items-end rounded-sm overflow-hidden">
+                          <div
+                            className={`w-full transition-all duration-500 ${taskBarColor}`}
+                            style={{
+                              height: `${item.count > 0 ? Math.max(14, pct) : 0}%`,
+                            }}
+                          />
+                        </div>
+                        <span className="text-[10px] text-faint truncate max-w-full">
+                          {item.label}
+                        </span>
                       </div>
-                      <span className="text-[10px] text-faint truncate max-w-full">
-                        {item.label}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="border-t border-line pt-4 space-y-2.5">
@@ -367,49 +391,60 @@ export const DashboardPage: React.FC = () => {
                   {summary?.stockItemsCount ?? 0} référence(s)
                 </span>
               </div>
-              <div className="h-3 w-full bg-canvas border border-line flex overflow-hidden rounded-sm">
-                <div
-                  className="bg-emerald-500 h-full transition-all"
-                  style={{
-                    width: `${
-                      (charts.stockHealth.healthy / stockTotalCount) * 100
-                    }%`,
-                  }}
-                  title="Stock sain"
-                />
-                <div
-                  className="bg-amber-500 h-full transition-all"
-                  style={{
-                    width: `${
-                      (charts.stockHealth.low / stockTotalCount) * 100
-                    }%`,
-                  }}
-                  title="Stock bas"
-                />
-                <div
-                  className="bg-rose-500 h-full transition-all"
-                  style={{
-                    width: `${
-                      (charts.stockHealth.out / stockTotalCount) * 100
-                    }%`,
-                  }}
-                  title="Rupture"
-                />
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-faint tabular-nums">
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-emerald-500" />
-                  Sain : {charts.stockHealth.healthy}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-amber-500" />
-                  Bas : {charts.stockHealth.low}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-rose-500" />
-                  Rupture : {charts.stockHealth.out}
-                </span>
-              </div>
+              {summary?.stockItemsCount === 0 ? (
+                <div className="py-2 text-center text-xs text-muted">
+                  Aucun article en stock.{" "}
+                  <Link to="/app/stock" className="text-fg underline decoration-line hover:decoration-fg">
+                    Ajouter des articles →
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  <div className="h-3 w-full bg-canvas border border-line flex overflow-hidden rounded-sm">
+                    <div
+                      className="bg-emerald-500 h-full transition-all"
+                      style={{
+                        width: `${
+                          (charts.stockHealth.healthy / stockTotalCount) * 100
+                        }%`,
+                      }}
+                      title="Stock sain"
+                    />
+                    <div
+                      className="bg-amber-500 h-full transition-all"
+                      style={{
+                        width: `${
+                          (charts.stockHealth.low / stockTotalCount) * 100
+                        }%`,
+                      }}
+                      title="Stock bas"
+                    />
+                    <div
+                      className="bg-rose-500 h-full transition-all"
+                      style={{
+                        width: `${
+                          (charts.stockHealth.out / stockTotalCount) * 100
+                        }%`,
+                      }}
+                      title="Rupture"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-faint tabular-nums">
+                    <span className="flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-emerald-500" />
+                      Sain : {charts.stockHealth.healthy}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-amber-500" />
+                      Bas : {charts.stockHealth.low}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-rose-500" />
+                      Rupture : {charts.stockHealth.out}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

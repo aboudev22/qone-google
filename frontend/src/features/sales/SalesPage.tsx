@@ -98,8 +98,8 @@ export const SalesPage: React.FC = () => {
     setEditingOpp(null);
     setTitle("");
     setClientId(clients[0]?.id ?? "");
-    setAmount("2500");
-    setProbability("30");
+    setAmount("0");
+    setProbability("50");
     setStage("prospecting");
     setExpectedCloseDate("");
     setNotes("");
@@ -566,7 +566,7 @@ export const SalesPage: React.FC = () => {
                     htmlFor="opp-amount"
                     className="block text-[11px] uppercase tracking-wider text-muted mb-1.5"
                   >
-                    Montant (€)
+                    Montant (F CFA)
                   </label>
                   <input
                     id="opp-amount"

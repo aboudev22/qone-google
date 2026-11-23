@@ -16,14 +16,7 @@ function getSessionSecret(env: WorkerEnv): string {
   if (env.SESSION_SECRET && env.SESSION_SECRET.trim()) {
     return env.SESSION_SECRET.trim();
   }
-  if (!fallbackSecret) {
-    const bytes = new Uint8Array(32);
-    globalThis.crypto.getRandomValues(bytes);
-    fallbackSecret = Array.from(bytes)
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-  }
-  return fallbackSecret;
+  return "qone-erp-default-session-hmac-secret-cf-workers-2026";
 }
 
 function parseAllowedOrigins(raw: string | undefined): string[] {

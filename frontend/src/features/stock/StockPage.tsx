@@ -19,11 +19,7 @@ import {
 } from "../../shared/api/erp";
 
 const formatXaf = (value: number) =>
-  new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 2,
-  }).format(value);
+  `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(value)} F CFA`;
 
 export const StockPage: React.FC = () => {
   const [items, setItems] = useState<StockItem[]>([]);
@@ -101,8 +97,8 @@ export const StockPage: React.FC = () => {
     setName("");
     setCategory("Général");
     setUnit("pcs");
-    setQuantity("10");
-    setMinQuantity("5");
+    setQuantity("0");
+    setMinQuantity("0");
     setUnitPrice("0");
     setSupplier("");
     setLocation("");
@@ -561,7 +557,7 @@ export const StockPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-[11px] uppercase tracking-wider text-muted mb-1.5">
-                    Prix unitaire (€)
+                    Prix unitaire (F CFA)
                   </label>
                   <input
                     type="number"

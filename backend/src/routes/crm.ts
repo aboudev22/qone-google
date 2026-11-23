@@ -446,7 +446,7 @@ export async function handleCrmAndSalesRoutes(
       actorEmail: user.email,
       category: "sales",
       action: "opportunity.created",
-      summary: `Opportunité « ${title} » (${amount} €) créée pour ${client.name}`,
+      summary: `Opportunité « ${title} » (${amount} F CFA) créée pour ${client.name}`,
     });
 
     return {
