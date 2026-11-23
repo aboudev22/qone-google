@@ -1,0 +1,161 @@
+@import "tailwindcss";
+
+/* Self-hosted latin subsets from Google Fonts: no third-party request, no
+   flash of fallback type on first paint, and the licence files stay with the
+   app. The latin subset includes French accents, œ and the euro sign. */
+@font-face {
+  font-family: "Google Sans Code";
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url("/fonts/google-sans-code-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Climate Crisis";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/climate-crisis-latin.woff2") format("woff2");
+}
+
+@theme {
+  --font-sans: "Google Sans Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: "Climate Crisis", "Google Sans Code", sans-serif;
+
+  --color-canvas: #0a0a0a;
+  --color-panel: #101010;
+  --color-panel-raised: #151515;
+  --color-line: #262626;
+  --color-line-strong: #3a3a3a;
+  --color-fg: #fafafa;
+  --color-muted: #a3a3a3;
+  --color-faint: #6f6f6f;
+  --color-accent: #ff5c9e;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: var(--color-accent);
+    color: var(--color-canvas);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Fine grid used behind the hero. It gives the monochrome layout depth
+   without adding a competing colour. */
+.hero-grid {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 30%, transparent 72%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 30%, transparent 72%);
+}
+
+.tilt-scene {
+  perspective: 900px;
+}
+
+.tilt-card {
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* The illustration and copy sit on separate depth planes so the tilt reads
+   as a physical card instead of a flat CSS rotation. */
+.tilt-depth-sm {
+  transform: translateZ(18px);
+}
+
+.tilt-depth-md {
+  transform: translateZ(34px);
+}
+
+.status-dot {
+  box-shadow: 0 0 0 0 rgba(255, 92, 158, 0.55);
+  animation: status-pulse 2.8s ease-out infinite;
+}
+
+@keyframes status-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 92, 158, 0.45);
+  }
+  60% {
+    box-shadow: 0 0 0 6px rgba(255, 92, 158, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 92, 158, 0);
+  }
+}
+
+.illustration-line {
+  transition: stroke 450ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.feature-card:hover .illustration-line {
+  stroke: #d8d8d8;
+}
+
+.illustration-float {
+  transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.illustration-slide {
+  transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.feature-card:hover .illustration-float {
+  transform: translateY(-5px);
+}
+
+.feature-card:hover .illustration-slide {
+  transform: translateX(6px);
+}
+
+.qone-neon-trace {
+  stroke-dasharray: 14 86;
+  stroke-dashoffset: 0;
+  opacity: 0.9;
+  animation: qone-neon-trace 5.6s linear infinite;
+}
+
+@keyframes qone-neon-trace {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -100;
+  }
+}

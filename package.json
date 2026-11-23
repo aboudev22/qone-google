@@ -1,0 +1,22 @@
+{
+  "name": "erp-qone",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm run build:frontend && npm --workspace=backend run start",
+    "build": "npm run build:frontend && npm --workspace=backend run typecheck",
+    "build:frontend": "npm --workspace=frontend run build",
+    "lint": "npm --workspace=frontend run lint && ./frontend/node_modules/.bin/eslint -c eslint.config.mjs firestore.rules",
+    "start": "npm --workspace=backend run start"
+  },
+  "dependencies": {
+    "@firebase/eslint-plugin-security-rules": "^0.0.2",
+    "@types/multer": "^2.3.0",
+    "exceljs": "^4.4.0",
+    "firebase": "^13.4.0",
+    "multer": "^2.5.0"
+  }
+}
