@@ -257,26 +257,48 @@ export const RegisterPage: React.FC = () => {
       <div className="min-h-screen bg-canvas text-fg flex flex-col items-center justify-center px-6">
         <div className="w-full max-w-md bg-panel border border-line p-10 text-center space-y-8">
           {/* Animated SVG Loader */}
-          <div className="relative size-24 mx-auto flex items-center justify-center">
-            <svg className="animate-spin size-24 text-accent" viewBox="0 0 100 100" fill="none">
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                stroke="currentColor"
-                strokeWidth="6"
-                strokeOpacity="0.15"
-              />
-              <path
-                d="M50 10 A40 40 0 0 1 90 50"
-                stroke="currentColor"
-                strokeWidth="6"
-                strokeLinecap="round"
-              />
+          <div className="size-24 mx-auto flex items-center justify-center">
+            <svg
+              className="size-24"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 200 200"
+            >
+              <g fill="#d4d4d8" stroke="#d4d4d8" strokeWidth="15">
+                <rect width="30" height="30" x="125" y="45">
+                  <animateTransform
+                    attributeName="transform"
+                    type="translate"
+                    calcMode="spline"
+                    dur="0.4s"
+                    values="0 0;0 80;0 80;0 80;-80 80;"
+                    keySplines=".5 0 .5 1;.5 0 .5 1;.5 0 .5 1;.5 0 .5 1"
+                    repeatCount="indefinite"
+                  />
+                </rect>
+                <rect width="30" height="30" x="45" y="45">
+                  <animateTransform
+                    attributeName="transform"
+                    type="translate"
+                    calcMode="spline"
+                    dur="0.4s"
+                    values="0 0;0 0;80 0;80 0;80 0;"
+                    keySplines=".5 0 .5 1;.5 0 .5 1;.5 0 .5 1;.5 0 .5 1"
+                    repeatCount="indefinite"
+                  />
+                </rect>
+                <rect width="30" height="30" x="45" y="125">
+                  <animateTransform
+                    attributeName="transform"
+                    type="translate"
+                    calcMode="spline"
+                    dur="0.4s"
+                    values="0 0;0 0 ;0 0;0 -80;0 -80;"
+                    keySplines=".5 0 .5 1;.5 0 .5 1;.5 0 .5 1;.5 0 .5 1"
+                    repeatCount="indefinite"
+                  />
+                </rect>
+              </g>
             </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Sparkles size={28} className="text-fg animate-pulse" />
-            </div>
           </div>
 
           <div className="space-y-2">
