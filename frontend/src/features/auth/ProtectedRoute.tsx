@@ -6,7 +6,7 @@ import { QoneMark } from "../../shared/components/QoneMark";
 export const ProtectedRoute: React.FC<{ children?: React.ReactNode }> = ({
   children,
 }) => {
-  const { isAuthenticated, needsOnboarding, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -24,10 +24,6 @@ export const ProtectedRoute: React.FC<{ children?: React.ReactNode }> = ({
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
-  if (needsOnboarding) {
-    return <Navigate to="/register" replace />;
   }
 
   return <>{children}</>;

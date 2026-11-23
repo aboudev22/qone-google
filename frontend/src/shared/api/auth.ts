@@ -1,4 +1,4 @@
-import { api } from "./client";
+import { localErpStore } from "../lib/localErpStore";
 
 export type Role = "owner" | "admin" | "member";
 export type ModuleKey = "crm" | "sales";
@@ -24,9 +24,10 @@ export interface RegisterInput {
   email: string;
   password: string;
   firstName: string;
-  lastName: string;
+  lastName?: string;
   companyName?: string;
   inviteToken?: string;
+  seedDemoData?: boolean;
 }
 
 export interface LoginInput {
@@ -54,43 +55,29 @@ export interface InvitationPreview {
   companyName: string;
 }
 
-export interface BootstrapDemoInput {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  companyName: string;
-  seedDemoData?: boolean;
-}
-
 export const authApi = {
-  getBootstrapStatus() {
-    return api.get<{ needsSetup: boolean }>("/api/auth/bootstrap-status");
+  async getBootstrapStatus(): Promise<{ needsSetup: boolean }> {
+    return localErpStore.getBootstrapStatus();
   },
 
-  bootstrapDemo(input: BootstrapDemoInput) {
-    return api.post<AuthResponse>("/api/auth/bootstrap-demo", input);
+  async register(input: RegisterInput): Promise<AuthResponse> {
+    return localErpStore.register(input);
   },
 
-  register(input: RegisterInput) {
-    return api.post<AuthResponse>("/api/auth/register", input);
+  async login(input: LoginInput): Promise<AuthResponse> {
+    return localErpStore.login(input);
   },
 
-  login(input: LoginInput) {
-    return api.post<AuthResponse>("/api/auth/login", input);
+  async logout(): Promise<{ message: string }> {
+    localErpStore.logout();
+    return { message: "Déconnecté." };
   },
 
-  logout() {
-    return api.post<{ message: string }>("/api/auth/logout");
+  async getMe(): Promise<AuthMeResponse | null> {
+    return localErpStore.getMe();
   },
 
-  getMe() {
-    return api.get<AuthMeResponse>("/api/auth/me");
-  },
-
-  getInvitation(token: string) {
-    return api.get<{ invitation: InvitationPreview }>(
-      `/api/auth/invitation/${encodeURIComponent(token)}`,
-    );
+  async getInvitation(token: string): Promise<{ invitation: InvitationPreview }> {
+    return { invitation: localErpStore.getInvitation(token) };
   },
 };

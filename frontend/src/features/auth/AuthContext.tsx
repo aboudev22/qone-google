@@ -1,23 +1,16 @@
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
-import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
-import { api } from "../../shared/api/client";
-import type { Company, User } from "../../shared/api/auth";
-import { auth, googleAuthProvider } from "../../shared/lib/firebase";
+import React, { createContext, useCallback, useContext, useState } from "react";
 import {
-  acceptTeamInvitation,
-  createCompanyWorkspace,
-  loadUserCompanies,
-  previewInvitationForSignedInUser,
-  recordActivity,
-  updateOwnUserNames,
-  upsertUserProfile,
-} from "../../shared/lib/firestoreErp";
+  authApi,
+  type Company,
+  type LoginInput,
+  type RegisterInput,
+  type User,
+} from "../../shared/api/auth";
+import {
+  getActiveCompanyId,
+  localErpStore,
+  setActiveCompanyId,
+} from "../../shared/lib/localErpStore";
 
 interface AuthContextType {
   user: User | null;
@@ -25,24 +18,8 @@ interface AuthContextType {
   currentCompany: Company | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  needsOnboarding: boolean;
-  signInWithGoogle: () => Promise<{ user: User; companies: Company[] }>;
-  createCompanyOnboarding: (input: {
-    companyName: string;
-    firstName?: string;
-    lastName?: string;
-    seedDemoData?: boolean;
-  }) => Promise<Company>;
-  acceptInvitationToken: (token: string) => Promise<Company>;
-  previewInvitation: (token: string) => Promise<{
-    id: string;
-    companyId: string;
-    companyName: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    role: Company["role"];
-  }>;
+  login: (input: LoginInput) => Promise<void>;
+  register: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
   setCurrentCompany: (company: Company) => void;
   refreshUser: () => Promise<void>;
@@ -50,175 +27,88 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function readInitialSession(): {
+  user: User | null;
+  companies: Company[];
+  currentCompany: Company | null;
+} {
+  const me = localErpStore.getMe();
+  if (!me || me.companies.length === 0) {
+    return { user: null, companies: [], currentCompany: null };
+  }
+  const storedId = getActiveCompanyId();
+  const matched =
+    me.companies.find((c) => c.id === storedId) || me.companies[0];
+  setActiveCompanyId(matched.id);
+  return {
+    user: me.user,
+    companies: me.companies,
+    currentCompany: matched,
+  };
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [currentCompany, setCurrentCompanyState] = useState<Company | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [initial] = useState(readInitialSession);
+  const [user, setUser] = useState<User | null>(initial.user);
+  const [companies, setCompanies] = useState<Company[]>(initial.companies);
+  const [currentCompany, setCurrentCompanyState] = useState<Company | null>(
+    initial.currentCompany,
+  );
 
   const setCurrentCompany = useCallback((company: Company) => {
     setCurrentCompanyState(company);
-    api.setActiveCompanyId(company.id);
+    setActiveCompanyId(company.id);
   }, []);
 
-  const syncFromFirebaseUser = useCallback(async () => {
-    const fbUser = auth.currentUser;
-    if (!fbUser) {
+  const applyCompanyList = useCallback(
+    (list: Company[]) => {
+      setCompanies(list);
+      if (list.length === 0) {
+        setCurrentCompanyState(null);
+        setActiveCompanyId(null);
+        return;
+      }
+      const storedId = getActiveCompanyId();
+      const matched = list.find((c) => c.id === storedId) || list[0];
+      setCurrentCompany(matched);
+    },
+    [setCurrentCompany],
+  );
+
+  const refreshUser = useCallback(async () => {
+    const me = await authApi.getMe();
+    if (!me) {
       setUser(null);
       setCompanies([]);
       setCurrentCompanyState(null);
-      api.setActiveCompanyId(null);
-      return { user: null, companies: [] as Company[] };
+      setActiveCompanyId(null);
+      return;
     }
+    setUser(me.user);
+    applyCompanyList(me.companies);
+  }, [applyCompanyList]);
 
-    const profile = await upsertUserProfile(fbUser);
-    const list = await loadUserCompanies(fbUser.uid);
-    setUser(profile);
-    setCompanies(list);
-
-    if (list.length > 0) {
-      const storedCompanyId = api.getActiveCompanyId();
-      const active = list.find((c) => c.id === storedCompanyId) || list[0];
-      setCurrentCompany(active);
-    } else {
-      setCurrentCompanyState(null);
-      api.setActiveCompanyId(null);
-    }
-
-    return { user: profile, companies: list };
-  }, [setCurrentCompany]);
-
-  const refreshUser = useCallback(async () => {
-    try {
-      await syncFromFirebaseUser();
-    } catch (err) {
-      console.error("Failed to refresh user state:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [syncFromFirebaseUser]);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      if (!fbUser) {
-        setUser(null);
-        setCompanies([]);
-        setCurrentCompanyState(null);
-        api.setActiveCompanyId(null);
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        await syncFromFirebaseUser();
-      } catch (err) {
-        console.error("Auth sync error:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    });
-
-    return () => unsubscribe();
-  }, [syncFromFirebaseUser]);
-
-  const signInWithGoogle = async () => {
-    const cred = await signInWithPopup(auth, googleAuthProvider);
-    const profile = await upsertUserProfile(cred.user);
-    const list = await loadUserCompanies(cred.user.uid);
-    setUser(profile);
-    setCompanies(list);
-
-    if (list.length > 0) {
-      const storedId = api.getActiveCompanyId();
-      const active = list.find((c) => c.id === storedId) || list[0];
-      setCurrentCompany(active);
-      await recordActivity(
-        active.id,
-        profile,
-        "auth.login",
-        `Connexion de ${profile.firstName || profile.email}`,
-      );
-    }
-
-    return { user: profile, companies: list };
+  const login = async (input: LoginInput) => {
+    const res = await authApi.login(input);
+    setUser(res.user);
+    applyCompanyList(res.companies || []);
   };
 
-  const createCompanyOnboarding = async (input: {
-    companyName: string;
-    firstName?: string;
-    lastName?: string;
-    seedDemoData?: boolean;
-  }) => {
-    const fbUser = auth.currentUser;
-    if (!fbUser) {
-      throw new Error("Veuillez d'abord vous connecter avec Google.");
-    }
-
-    let currentProfile = user || (await upsertUserProfile(fbUser));
-    if (input.firstName?.trim() || input.lastName?.trim()) {
-      const nextFirst = input.firstName?.trim() || currentProfile.firstName;
-      const nextLast = input.lastName?.trim() ?? currentProfile.lastName;
-      await updateOwnUserNames(fbUser.uid, nextFirst, nextLast);
-      currentProfile = {
-        ...currentProfile,
-        firstName: nextFirst,
-        lastName: nextLast,
-      };
-      setUser(currentProfile);
-    }
-
-    const company = await createCompanyWorkspace({
-      user: currentProfile,
-      companyName: input.companyName,
-      seedDemoData: input.seedDemoData,
-    });
-
-    const list = await loadUserCompanies(fbUser.uid);
-    setCompanies(list);
-    setCurrentCompany(company);
-    return company;
-  };
-
-  const acceptInvitationToken = async (token: string) => {
-    const fbUser = auth.currentUser;
-    if (!fbUser) {
-      throw new Error("Veuillez d'abord vous connecter avec Google.");
-    }
-    const currentProfile = user || (await upsertUserProfile(fbUser));
-    const company = await acceptTeamInvitation(token, currentProfile);
-    const list = await loadUserCompanies(fbUser.uid);
-    setCompanies(list);
-    setCurrentCompany(company);
-    return company;
-  };
-
-  const previewInvitation = async (token: string) => {
-    return previewInvitationForSignedInUser(token);
+  const register = async (input: RegisterInput) => {
+    const res = await authApi.register(input);
+    setUser(res.user);
+    const list = res.companies || (res.company ? [res.company] : []);
+    applyCompanyList(list);
   };
 
   const logout = async () => {
-    setIsLoading(true);
-    try {
-      if (user && currentCompany) {
-        await recordActivity(
-          currentCompany.id,
-          user,
-          "auth.logout",
-          `Déconnexion de ${user.firstName || user.email}`,
-        );
-      }
-      await signOut(auth);
-    } catch {
-      // Ignore signOut errors client-side
-    } finally {
-      setUser(null);
-      setCompanies([]);
-      setCurrentCompanyState(null);
-      api.setActiveCompanyId(null);
-      setIsLoading(false);
-    }
+    await authApi.logout();
+    setUser(null);
+    setCompanies([]);
+    setCurrentCompanyState(null);
+    setActiveCompanyId(null);
   };
 
   return (
@@ -227,13 +117,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         user,
         companies,
         currentCompany,
-        isLoading,
-        isAuthenticated: Boolean(user),
-        needsOnboarding: Boolean(user) && companies.length === 0,
-        signInWithGoogle,
-        createCompanyOnboarding,
-        acceptInvitationToken,
-        previewInvitation,
+        isLoading: false,
+        isAuthenticated: Boolean(user && currentCompany),
+        login,
+        register,
         logout,
         setCurrentCompany,
         refreshUser,

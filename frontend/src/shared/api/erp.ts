@@ -1,27 +1,13 @@
-import { api } from "./client";
-import type { ModuleKey, Role, User } from "./auth";
-import { auth } from "../lib/firebase";
-import { buildClientsCsv, validateImportRows } from "../lib/clientExcel";
+import type { ModuleKey, Role } from "./auth";
 import {
-  batchCommitImportedClients,
-  createClientRecord,
-  createCompanyWorkspace,
-  createOpportunityRecord,
-  createTeamInvitation,
-  deleteClientRecord,
-  deleteOpportunityRecord,
-  listActivities,
-  listClients,
-  listOpportunities,
-  listTeam,
-  removeCompanyMember,
-  revokeTeamInvitation,
-  updateClientRecord,
-  updateCompanySettings,
-  updateMemberRoleRecord,
-  updateOpportunityRecord,
-  upsertUserProfile,
-} from "../lib/firestoreErp";
+  buildClientsCsv,
+  buildClientTemplateXlsxBlob,
+  parseXlsxFile,
+  suggestMapping,
+  validateImportRows,
+  type ParsedSheetData,
+} from "../lib/clientExcel";
+import { localErpStore } from "../lib/localErpStore";
 
 export type ClientStatus = "active" | "prospect" | "inactive";
 
@@ -158,44 +144,16 @@ export interface ImportCommitResponse {
   };
 }
 
-interface ParsedExcelPayload {
-  sheetName: string;
-  headers: string[];
+interface ParsedExcelPayload extends ParsedSheetData {
   suggestedMapping: ColumnMapping;
   totalRows: number;
-  rows: Record<string, string>[];
 }
 
 const pendingExcelImports = new Map<string, ParsedExcelPayload>();
 
-async function requireSessionContext(): Promise<{
-  user: User;
-  companyId: string;
-}> {
-  const fbUser = auth.currentUser;
-  if (!fbUser) {
-    throw new Error("Session expirée. Veuillez vous reconnecter.");
-  }
-  const companyId = api.getActiveCompanyId();
-  if (!companyId) {
-    throw new Error("Aucun espace d'entreprise actif sélectionné.");
-  }
-  const user = await upsertUserProfile(fbUser);
-  return { user, companyId };
-}
-
 export const companiesApi = {
   async create(name: string) {
-    const fbUser = auth.currentUser;
-    if (!fbUser) {
-      throw new Error("Session expirée. Veuillez vous reconnecter.");
-    }
-    const user = await upsertUserProfile(fbUser);
-    const company = await createCompanyWorkspace({
-      user,
-      companyName: name,
-    });
-    return { company };
+    return { company: localErpStore.createCompany(name) };
   },
 
   async updateCurrent(patch: {
@@ -203,46 +161,17 @@ export const companiesApi = {
     slug?: string;
     enabledModules?: ModuleKey[];
   }) {
-    const { user, companyId } = await requireSessionContext();
-    const company = await updateCompanySettings(companyId, user, patch);
-    return { company };
+    return { company: localErpStore.updateCurrentCompany(patch) };
   },
 
   async getSummary(): Promise<CompanySummaryResponse> {
-    const { companyId } = await requireSessionContext();
-    const [team, clients, opportunities, recentActivities] = await Promise.all([
-      listTeam(companyId),
-      listClients(companyId),
-      listOpportunities(companyId),
-      listActivities(companyId, 8),
-    ]);
-
-    const openOpps = opportunities.filter(
-      (o) => o.stage !== "won" && o.stage !== "lost",
-    );
-    const wonOpps = opportunities.filter((o) => o.stage === "won");
-
-    return {
-      summary: {
-        membersCount: team.members.length || 1,
-        clientsCount: clients.length,
-        activeClientsCount: clients.filter((c) => c.status === "active").length,
-        opportunitiesCount: opportunities.length,
-        openOpportunitiesCount: openOpps.length,
-        pipelineValue: openOpps.reduce((sum, o) => sum + o.amount, 0),
-        wonValue: wonOpps.reduce((sum, o) => sum + o.amount, 0),
-      },
-      recentClients: clients.slice(0, 5),
-      recentOpportunities: opportunities.slice(0, 5),
-      recentActivities,
-    };
+    return localErpStore.getCompanySummary();
   },
 };
 
 export const teamApi = {
   async list() {
-    const { companyId } = await requireSessionContext();
-    return listTeam(companyId);
+    return localErpStore.listTeam();
   },
 
   async invite(input: {
@@ -251,47 +180,27 @@ export const teamApi = {
     lastName?: string;
     role: Role;
   }) {
-    const { user, companyId } = await requireSessionContext();
-    const invitation = await createTeamInvitation(
-      {
-        id: companyId,
-        name: "Espace qone",
-        slug: "espace",
-        role: "owner",
-      },
-      user,
-      input,
-    );
-    return {
-      addedDirectly: false,
-      invitation,
-    };
+    return localErpStore.inviteMember(input);
   },
 
   async revokeInvitation(id: string) {
-    const { user, companyId } = await requireSessionContext();
-    await revokeTeamInvitation(companyId, id, user);
+    localErpStore.revokeInvitation(id);
     return { message: "Invitation révoquée." };
   },
 
   async updateRole(memberId: string, role: Role) {
-    const { user, companyId } = await requireSessionContext();
-    const member = await updateMemberRoleRecord(companyId, memberId, role, user);
-    return { member };
+    return { member: localErpStore.updateMemberRole(memberId, role) };
   },
 
   async removeMember(memberId: string) {
-    const { user, companyId } = await requireSessionContext();
-    await removeCompanyMember(companyId, memberId, user);
+    localErpStore.removeMember(memberId);
     return { message: "Collaborateur retiré." };
   },
 };
 
 export const clientsApi = {
   async list(params?: { search?: string; status?: string }) {
-    const { companyId } = await requireSessionContext();
-    const clients = await listClients(companyId, params);
-    return { clients };
+    return { clients: localErpStore.listClients(params) };
   },
 
   async create(input: {
@@ -302,9 +211,7 @@ export const clientsApi = {
     status?: ClientStatus;
     notes?: string;
   }) {
-    const { user, companyId } = await requireSessionContext();
-    const client = await createClientRecord(companyId, user, input);
-    return { client };
+    return { client: localErpStore.createClient(input) };
   },
 
   async update(
@@ -318,20 +225,16 @@ export const clientsApi = {
       notes: string;
     }>,
   ) {
-    const { user, companyId } = await requireSessionContext();
-    const client = await updateClientRecord(companyId, id, user, patch);
-    return { client };
+    return { client: localErpStore.updateClient(id, patch) };
   },
 
   async remove(id: string) {
-    const { user, companyId } = await requireSessionContext();
-    await deleteClientRecord(companyId, id, user);
+    localErpStore.deleteClient(id);
     return { message: "Client supprimé." };
   },
 
   async exportCsv(params?: { search?: string; status?: string; ids?: string[] }) {
-    const { companyId } = await requireSessionContext();
-    let clients = await listClients(companyId, {
+    let clients = localErpStore.listClients({
       search: params?.search,
       status: params?.status,
     });
@@ -343,30 +246,31 @@ export const clientsApi = {
     return new Blob([csv], { type: "text/csv;charset=utf-8" });
   },
 
-  downloadImportTemplate() {
-    return api.downloadBlob("/api/excel/template");
+  async downloadImportTemplate() {
+    return buildClientTemplateXlsxBlob();
   },
 
   async previewImport(file: File): Promise<ImportPreviewResponse> {
-    const form = new FormData();
-    form.append("file", file);
-    const parsed = await api.postForm<ParsedExcelPayload>("/api/excel/parse", form);
-    if (
-      !parsed ||
-      !Array.isArray(parsed.headers) ||
-      !Array.isArray(parsed.rows)
-    ) {
-      throw new Error("Impossible de lire la structure de ce classeur Excel.");
-    }
-    const importId = crypto.randomUUID();
-    pendingExcelImports.set(importId, parsed);
+    const parsed = await parseXlsxFile(file);
+    const suggested = suggestMapping(parsed.headers);
+    const payload: ParsedExcelPayload = {
+      ...parsed,
+      suggestedMapping: suggested,
+      totalRows: parsed.rows.length,
+    };
+    const importId =
+      typeof globalThis.crypto?.randomUUID === "function"
+        ? globalThis.crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    pendingExcelImports.set(importId, payload);
+
     return {
       importId,
-      sheetName: parsed.sheetName,
-      headers: parsed.headers,
-      suggestedMapping: parsed.suggestedMapping || {},
-      totalRows: parsed.totalRows,
-      previewRows: parsed.rows.slice(0, 8),
+      sheetName: payload.sheetName,
+      headers: payload.headers,
+      suggestedMapping: payload.suggestedMapping,
+      totalRows: payload.totalRows,
+      previewRows: payload.rows.slice(0, 8),
     };
   },
 
@@ -381,8 +285,7 @@ export const clientsApi = {
         "Session d'import expirée. Veuillez recharger votre fichier Excel.",
       );
     }
-    const { companyId } = await requireSessionContext();
-    const existingClients = await listClients(companyId);
+    const existingClients = localErpStore.listClients();
     const validated = validateImportRows(
       parsed.rows,
       input.mapping,
@@ -434,8 +337,7 @@ export const clientsApi = {
         "Session d'import expirée. Veuillez recharger votre fichier Excel.",
       );
     }
-    const { user, companyId } = await requireSessionContext();
-    const existingClients = await listClients(companyId);
+    const existingClients = localErpStore.listClients();
     const validated = validateImportRows(
       parsed.rows,
       input.mapping,
@@ -507,12 +409,7 @@ export const clientsApi = {
       });
     }
 
-    const { imported, updated } = await batchCommitImportedClients(
-      companyId,
-      user,
-      batchOps,
-    );
-
+    const { imported, updated } = localErpStore.commitImportedClients(batchOps);
     pendingExcelImports.delete(input.importId);
 
     return {
@@ -530,9 +427,7 @@ export const clientsApi = {
 
 export const opportunitiesApi = {
   async list() {
-    const { companyId } = await requireSessionContext();
-    const opportunities = await listOpportunities(companyId);
-    return { opportunities };
+    return { opportunities: localErpStore.listOpportunities() };
   },
 
   async create(input: {
@@ -544,9 +439,7 @@ export const opportunitiesApi = {
     expectedCloseDate?: string;
     notes?: string;
   }) {
-    const { user, companyId } = await requireSessionContext();
-    const opportunity = await createOpportunityRecord(companyId, user, input);
-    return { opportunity };
+    return { opportunity: localErpStore.createOpportunity(input) };
   },
 
   async update(
@@ -561,14 +454,11 @@ export const opportunitiesApi = {
       notes: string;
     }>,
   ) {
-    const { user, companyId } = await requireSessionContext();
-    const opportunity = await updateOpportunityRecord(companyId, id, user, patch);
-    return { opportunity };
+    return { opportunity: localErpStore.updateOpportunity(id, patch) };
   },
 
   async remove(id: string) {
-    const { user, companyId } = await requireSessionContext();
-    await deleteOpportunityRecord(companyId, id, user);
+    localErpStore.deleteOpportunity(id);
     return { message: "Opportunité supprimée." };
   },
 };
