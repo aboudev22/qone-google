@@ -1,4 +1,5 @@
 export { AuthActions } from "./AuthActions";
+export { CompanySection } from "./CompanySection";
 export { Description } from "./Description";
 export { FeatCard } from "./FeatCard";
 export { FooterWordmark } from "./FooterWordmark";

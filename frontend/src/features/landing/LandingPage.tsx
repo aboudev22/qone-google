@@ -1,6 +1,7 @@
 import { QoneBrand } from "../../shared/components/QoneBrand";
 import {
   AuthActions,
+  CompanySection,
   Description,
   FooterWordmark,
   GettingStarted,
@@ -37,7 +38,7 @@ export default function LandingPage() {
               aria-hidden="true"
               className="size-1.5 rounded-full border border-line-strong"
             />
-            v0.1 — en construction
+            v0.1 — en production
           </div>
         </aside>
 
@@ -45,6 +46,7 @@ export default function LandingPage() {
           <div className="flex flex-col gap-20 sm:gap-24 lg:gap-28">
             <HeroSection />
             <Description />
+            <CompanySection />
             <GettingStarted />
           </div>
 
@@ -80,4 +82,4 @@ export default function LandingPage() {
       </div>
     </div>
   );
-}
+};

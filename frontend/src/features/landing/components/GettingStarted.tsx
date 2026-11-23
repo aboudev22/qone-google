@@ -35,7 +35,7 @@ export const GettingStarted = () => {
       className="scroll-mt-24 border-t border-line pt-6"
     >
       <div className="grid gap-10 md:grid-cols-[160px_minmax(0,1fr)] md:gap-12">
-        <p className="text-[11px] text-faint">02 / Démarrage</p>
+        <p className="text-[11px] text-faint">04 / Démarrage</p>
 
         <div>
           <h2

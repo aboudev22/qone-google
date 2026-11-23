@@ -3,7 +3,8 @@ import { ArrowUpRight } from "lucide-react";
 const ITEMS = [
   { index: "01", label: "Produit", href: "#produit" },
   { index: "02", label: "Modules", href: "#modules" },
-  { index: "03", label: "Démarrage", href: "#demarrer" },
+  { index: "03", label: "Entreprise", href: "#entreprise" },
+  { index: "04", label: "Démarrage", href: "#demarrer" },
 ];
 
 export const Navbar = () => {

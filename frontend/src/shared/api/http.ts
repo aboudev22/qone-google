@@ -1,4 +1,9 @@
-const RAW_API_BASE = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
+const RAW_API_BASE = (
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD ? "https://qone-api.aboubakarjay2.workers.dev" : "")
+)
+  .trim()
+  .replace(/\/+$/, "");
 
 let inMemoryToken: string | null = null;
 let inMemoryCompanyId: string | null = null;
