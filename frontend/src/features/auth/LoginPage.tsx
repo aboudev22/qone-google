@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Building2, Loader2, User } from "lucide-react";
 import { QoneBrand } from "../../shared/components/QoneBrand";
+import type { AccountType } from "../../shared/api/auth";
 import { useAuth } from "./AuthContext";
 
 export const LoginPage: React.FC = () => {
@@ -11,6 +12,7 @@ export const LoginPage: React.FC = () => {
   const inviteToken = searchParams.get("invite")?.trim() || undefined;
   const { isAuthenticated, login } = useAuth();
 
+  const [mode, setMode] = useState<AccountType>("company");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +39,7 @@ export const LoginPage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      await login({ email, password, inviteToken });
+      await login({ email, password, mode, inviteToken });
       navigate(from, { replace: true });
     } catch (err: unknown) {
       setError(
@@ -72,25 +74,29 @@ export const LoginPage: React.FC = () => {
             <QoneBrand />
             <div className="mt-20 max-w-md">
               <span className="text-[11px] text-faint tracking-wider">
-                CONNEXION À L'ESPACE
+                {mode === "company" ? "ESPACE ENTREPRISE" : "ESPACE PARTICULIER & EMPLOYÉ"}
               </span>
               <h1 className="mt-4 text-3xl font-medium tracking-tight leading-snug">
-                Retrouvez l'ensemble de vos opérations d'entreprise.
+                {mode === "company"
+                  ? "Pilotez vos équipes, projets et stocks depuis un seul espace."
+                  : "Accédez à votre espace personnel et aux projets d'entreprise."}
               </h1>
               <p className="mt-4 text-sm text-muted leading-relaxed">
-                Connectez-vous avec votre adresse email pour retrouver vos clients, imports Excel, opportunités et historique d'actions.
+                {mode === "company"
+                  ? "Connectez-vous avec votre email professionnel pour retrouver vos employés, projets, stock, clients et journaux d'activité."
+                  : "Connectez-vous avec votre email pour gérer vos tâches assignées, accepter les invitations d'entreprises et collaborer sur les projets."}
               </p>
             </div>
           </div>
 
           <div className="text-[11px] text-faint">
-            qone ERP — gestion modulaire des opérations
+            qone ERP — connexion sécurisée par email
           </div>
         </div>
 
         <div className="flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-16">
           <div className="w-full max-w-md mx-auto">
-            <div className="mb-8">
+            <div className="mb-6">
               <p className="text-[11px] text-faint tracking-wider">CONNEXION</p>
               <h2 className="mt-2 text-2xl font-medium tracking-tight">
                 Accéder à votre compte
@@ -105,16 +111,49 @@ export const LoginPage: React.FC = () => {
                   }
                   className="text-fg underline decoration-line-strong hover:decoration-fg transition-colors"
                 >
-                  Inscrivez votre entreprise
+                  Créer un compte Entreprise ou Particulier
                 </Link>
               </p>
+            </div>
+
+            <div className="mb-6 grid grid-cols-2 border border-line bg-panel p-1 gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("company");
+                  setError(null);
+                }}
+                className={`flex items-center justify-center gap-2 py-2.5 text-xs transition-colors ${
+                  mode === "company"
+                    ? "bg-fg text-canvas font-medium"
+                    : "text-muted hover:text-fg"
+                }`}
+              >
+                <Building2 size={14} />
+                <span>Entreprise</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("individual");
+                  setError(null);
+                }}
+                className={`flex items-center justify-center gap-2 py-2.5 text-xs transition-colors ${
+                  mode === "individual"
+                    ? "bg-fg text-canvas font-medium"
+                    : "text-muted hover:text-fg"
+                }`}
+              >
+                <User size={14} />
+                <span>Particulier</span>
+              </button>
             </div>
 
             {inviteToken && (
               <div className="mb-6 border border-line-strong bg-panel p-4 text-xs text-muted">
                 <p className="text-fg font-medium">Invitation détectée</p>
                 <p className="mt-1">
-                  Connectez-vous avec l'adresse invitée pour rejoindre automatiquement l'espace d'entreprise.
+                  Connectez-vous avec l'adresse invitée pour rejoindre automatiquement l'espace.
                 </p>
               </div>
             )}
@@ -143,7 +182,9 @@ export const LoginPage: React.FC = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="nom@entreprise.com"
+                  placeholder={
+                    mode === "company" ? "contact@entreprise.com" : "prenom@email.com"
+                  }
                   className="w-full bg-panel border border-line px-3.5 py-2.5 text-xs text-fg placeholder:text-faint focus:border-fg focus:outline-none transition-colors"
                 />
               </div>
@@ -178,7 +219,9 @@ export const LoginPage: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    Se connecter
+                    {mode === "company"
+                      ? "Connexion Entreprise"
+                      : "Connexion Particulier"}
                     <ArrowRight
                       size={14}
                       className="transition-transform duration-300 group-hover:translate-x-1"

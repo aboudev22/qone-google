@@ -1,6 +1,9 @@
 import {
   Briefcase,
+  FolderKanban,
   LayoutDashboard,
+  Package,
+  ScrollText,
   Settings,
   ShieldCheck,
   Users,
@@ -27,11 +30,29 @@ export const ERP_MODULES: ErpModuleDefinition[] = [
     path: "/app",
     end: true,
     icon: LayoutDashboard,
-    description: "Vue d'ensemble de l'entreprise et indicateurs clés.",
+    description: "Vue d'ensemble, graphiques et indicateurs clés.",
+  },
+  {
+    id: "projects",
+    index: "02",
+    label: "Projets & Tâches",
+    path: "/app/projects",
+    icon: FolderKanban,
+    optionalKey: "projects",
+    description: "Projets, collaboration d'équipe et assignation des tâches.",
+  },
+  {
+    id: "stock",
+    index: "03",
+    label: "Stock & Produits",
+    path: "/app/stock",
+    icon: Package,
+    optionalKey: "stock",
+    description: "Inventaire, seuils d'alerte, entrées et sorties de stock.",
   },
   {
     id: "crm",
-    index: "02",
+    index: "04",
     label: "Clients & CRM",
     path: "/app/clients",
     icon: Users,
@@ -40,7 +61,7 @@ export const ERP_MODULES: ErpModuleDefinition[] = [
   },
   {
     id: "sales",
-    index: "03",
+    index: "05",
     label: "Opportunités",
     path: "/app/sales",
     icon: Briefcase,
@@ -49,19 +70,27 @@ export const ERP_MODULES: ErpModuleDefinition[] = [
   },
   {
     id: "team",
-    index: "04",
-    label: "Équipe & Rôles",
+    index: "06",
+    label: "Équipe & Employés",
     path: "/app/team",
     icon: ShieldCheck,
-    description: "Collaborateurs, invitations et gestion des permissions.",
+    description: "Recherche d'employés par email, invitations et rôles.",
+  },
+  {
+    id: "logs",
+    index: "07",
+    label: "Journal & Logs",
+    path: "/app/logs",
+    icon: ScrollText,
+    description: "Historique complet et traçabilité des actions effectuées.",
   },
   {
     id: "settings",
-    index: "05",
+    index: "08",
     label: "Paramètres",
     path: "/app/settings",
     icon: Settings,
-    description: "Configuration de l'entreprise et activation des modules.",
+    description: "Configuration de l'espace et activation des modules.",
   },
 ];
 
@@ -70,6 +99,18 @@ export const OPTIONAL_MODULES: Array<{
   label: string;
   description: string;
 }> = [
+  {
+    key: "projects",
+    label: "Projets & Tâches",
+    description:
+      "Création de projets, invitation de collaborateurs et suivi des tâches.",
+  },
+  {
+    key: "stock",
+    label: "Gestion de Stock",
+    description:
+      "Catalogue articles, mouvements entrées/sorties et alertes de réapprovisionnement.",
+  },
   {
     key: "crm",
     label: "Clients & CRM",

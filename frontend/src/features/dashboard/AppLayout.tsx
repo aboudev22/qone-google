@@ -7,6 +7,7 @@ import {
   LogOut,
   Menu,
   Plus,
+  User,
   X,
 } from "lucide-react";
 import { QoneBrand } from "../../shared/components/QoneBrand";
@@ -25,6 +26,7 @@ export const AppLayout: React.FC = () => {
     user,
     companies,
     currentCompany,
+    pendingInvitations,
     setCurrentCompany,
     refreshUser,
     logout,
@@ -63,15 +65,17 @@ export const AppLayout: React.FC = () => {
       setCreatingCompany(false);
       setSwitcherOpen(false);
     } catch (err: unknown) {
-      const message =
-        err && typeof err === "object" && "message" in err
-          ? String((err as { message: string }).message)
-          : "Impossible de créer l'entreprise.";
-      setCreateError(message);
+      setCreateError(
+        err instanceof Error
+          ? err.message
+          : "Impossible de créer l'entreprise.",
+      );
     } finally {
       setIsSubmittingCompany(false);
     }
   };
+
+  const isPersonal = currentCompany?.workspaceType === "personal";
 
   const companySelector = (
     <div className="relative">
@@ -82,7 +86,11 @@ export const AppLayout: React.FC = () => {
       >
         <div className="flex items-center gap-3 min-w-0">
           <span className="size-8 border border-line bg-panel-raised flex items-center justify-center shrink-0">
-            <Building2 size={15} className="text-muted" />
+            {isPersonal ? (
+              <User size={15} className="text-muted" />
+            ) : (
+              <Building2 size={15} className="text-muted" />
+            )}
           </span>
           <div className="min-w-0">
             <p className="text-xs font-medium text-fg truncate">
@@ -90,7 +98,9 @@ export const AppLayout: React.FC = () => {
             </p>
             <span className="inline-flex items-center gap-1.5 text-[10px] text-faint">
               <span className="size-1 rounded-full bg-accent" />
-              {currentCompany?.role
+              {isPersonal
+                ? "Particulier"
+                : currentCompany?.role
                 ? ROLE_LABELS[currentCompany.role]
                 : "Membre"}
             </span>
@@ -117,7 +127,12 @@ export const AppLayout: React.FC = () => {
               }}
               className="w-full px-2.5 py-2 text-left text-xs flex items-center justify-between hover:bg-panel transition-colors"
             >
-              <span className="truncate text-fg">{c.name}</span>
+              <span className="truncate text-fg">
+                {c.name}
+                <span className="text-[10px] text-faint ml-1.5">
+                  ({c.workspaceType === "personal" ? "Perso" : ROLE_LABELS[c.role]})
+                </span>
+              </span>
               {c.id === currentCompany?.id && (
                 <Check size={13} className="text-accent shrink-0" />
               )}
@@ -211,8 +226,16 @@ export const AppLayout: React.FC = () => {
 
       <aside className="hidden lg:flex w-64 border-r border-line bg-panel/30 flex-col justify-between shrink-0 h-screen sticky top-0">
         <div className="overflow-y-auto">
-          <div className="p-6 border-b border-line">
+          <div className="p-6 border-b border-line flex items-center justify-between">
             <QoneBrand />
+            {pendingInvitations.length > 0 && (
+              <span
+                title={`${pendingInvitations.length} invitation(s) en attente`}
+                className="px-1.5 py-0.5 border border-accent text-[10px] text-accent tabular-nums"
+              >
+                {pendingInvitations.length} inv.
+              </span>
+            )}
           </div>
 
           <div className="p-4">{companySelector}</div>

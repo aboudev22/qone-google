@@ -1,21 +1,25 @@
-import React, { createContext, useCallback, useContext, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import {
   authApi,
   type Company,
   type LoginInput,
+  type PendingInvitation,
   type RegisterInput,
   type User,
 } from "../../shared/api/auth";
-import {
-  getActiveCompanyId,
-  localErpStore,
-  setActiveCompanyId,
-} from "../../shared/lib/localErpStore";
+import { setActiveCompanyHeader } from "../../shared/api/http";
 
 interface AuthContextType {
   user: User | null;
   companies: Company[];
   currentCompany: Company | null;
+  pendingInvitations: PendingInvitation[];
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (input: LoginInput) => Promise<void>;
@@ -23,58 +27,42 @@ interface AuthContextType {
   logout: () => Promise<void>;
   setCurrentCompany: (company: Company) => void;
   refreshUser: () => Promise<void>;
+  acceptInvitation: (invitationId: string) => Promise<void>;
+  declineInvitation: (invitationId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function readInitialSession(): {
-  user: User | null;
-  companies: Company[];
-  currentCompany: Company | null;
-} {
-  const me = localErpStore.getMe();
-  if (!me || me.companies.length === 0) {
-    return { user: null, companies: [], currentCompany: null };
-  }
-  const storedId = getActiveCompanyId();
-  const matched =
-    me.companies.find((c) => c.id === storedId) || me.companies[0];
-  setActiveCompanyId(matched.id);
-  return {
-    user: me.user,
-    companies: me.companies,
-    currentCompany: matched,
-  };
-}
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [initial] = useState(readInitialSession);
-  const [user, setUser] = useState<User | null>(initial.user);
-  const [companies, setCompanies] = useState<Company[]>(initial.companies);
-  const [currentCompany, setCurrentCompanyState] = useState<Company | null>(
-    initial.currentCompany,
-  );
+  const [user, setUser] = useState<User | null>(null);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [currentCompany, setCurrentCompanyState] = useState<Company | null>(null);
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const setCurrentCompany = useCallback((company: Company) => {
     setCurrentCompanyState(company);
-    setActiveCompanyId(company.id);
+    setActiveCompanyHeader(company.id);
   }, []);
 
   const applyCompanyList = useCallback(
-    (list: Company[]) => {
+    (list: Company[], preferredId?: string) => {
       setCompanies(list);
       if (list.length === 0) {
         setCurrentCompanyState(null);
-        setActiveCompanyId(null);
+        setActiveCompanyHeader(null);
         return;
       }
-      const storedId = getActiveCompanyId();
-      const matched = list.find((c) => c.id === storedId) || list[0];
-      setCurrentCompany(matched);
+      setCurrentCompanyState((prev) => {
+        const targetId = preferredId || prev?.id;
+        const matched = list.find((c) => c.id === targetId) || list[0];
+        setActiveCompanyHeader(matched.id);
+        return matched;
+      });
     },
-    [setCurrentCompany],
+    [],
   );
 
   const refreshUser = useCallback(async () => {
@@ -83,24 +71,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setUser(null);
       setCompanies([]);
       setCurrentCompanyState(null);
-      setActiveCompanyId(null);
+      setPendingInvitations([]);
+      setActiveCompanyHeader(null);
       return;
     }
     setUser(me.user);
+    setPendingInvitations(me.pendingInvitations || []);
     applyCompanyList(me.companies);
+  }, [applyCompanyList]);
+
+  useEffect(() => {
+    let active = true;
+    void authApi
+      .getMe()
+      .then((me) => {
+        if (!active) return;
+        if (!me) {
+          setUser(null);
+          setCompanies([]);
+          setCurrentCompanyState(null);
+          setPendingInvitations([]);
+          setActiveCompanyHeader(null);
+          return;
+        }
+        setUser(me.user);
+        setPendingInvitations(me.pendingInvitations || []);
+        applyCompanyList(me.companies);
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [applyCompanyList]);
 
   const login = async (input: LoginInput) => {
     const res = await authApi.login(input);
     setUser(res.user);
-    applyCompanyList(res.companies || []);
+    setPendingInvitations(res.pendingInvitations || []);
+    const list = res.companies || [];
+    applyCompanyList(list, list[0]?.id);
   };
 
   const register = async (input: RegisterInput) => {
     const res = await authApi.register(input);
     setUser(res.user);
+    setPendingInvitations(res.pendingInvitations || []);
     const list = res.companies || (res.company ? [res.company] : []);
-    applyCompanyList(list);
+    applyCompanyList(list, list[0]?.id);
   };
 
   const logout = async () => {
@@ -108,7 +127,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setUser(null);
     setCompanies([]);
     setCurrentCompanyState(null);
-    setActiveCompanyId(null);
+    setPendingInvitations([]);
+    setActiveCompanyHeader(null);
+  };
+
+  const acceptInvitation = async (invitationId: string) => {
+    const res = await authApi.acceptInvitation(invitationId);
+    setPendingInvitations(res.pendingInvitations);
+    applyCompanyList(res.companies, res.joinedCompanyId);
+  };
+
+  const declineInvitation = async (invitationId: string) => {
+    const res = await authApi.declineInvitation(invitationId);
+    setPendingInvitations(res.pendingInvitations);
   };
 
   return (
@@ -117,13 +148,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         user,
         companies,
         currentCompany,
-        isLoading: false,
+        pendingInvitations,
+        isLoading,
         isAuthenticated: Boolean(user && currentCompany),
         login,
         register,
         logout,
         setCurrentCompany,
         refreshUser,
+        acceptInvitation,
+        declineInvitation,
       }}
     >
       {children}

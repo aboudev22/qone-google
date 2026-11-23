@@ -1,6 +1,19 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Check, Copy, Mail, Shield, Trash2, UserPlus, X } from "lucide-react";
-import type { Role } from "../../shared/api/auth";
+import {
+  Check,
+  Copy,
+  Mail,
+  Search,
+  Shield,
+  Trash2,
+  UserPlus,
+  X,
+} from "lucide-react";
+import {
+  authApi,
+  type DirectoryUser,
+  type Role,
+} from "../../shared/api/auth";
 import {
   teamApi,
   type TeamInvitation,
@@ -20,6 +33,12 @@ export const TeamPage: React.FC = () => {
   const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  // Live employee search on the platform
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<DirectoryUser[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -41,11 +60,11 @@ export const TeamPage: React.FC = () => {
       setMembers(res.members);
       setInvitations(res.invitations);
     } catch (err: unknown) {
-      const msg =
-        err && typeof err === "object" && "message" in err
-          ? String((err as { message: string }).message)
-          : "Impossible de charger la liste des collaborateurs.";
-      setError(msg);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Impossible de charger la liste des collaborateurs.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -54,6 +73,54 @@ export const TeamPage: React.FC = () => {
   useEffect(() => {
     void Promise.resolve().then(() => loadTeam());
   }, [loadTeam]);
+
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!canManageTeam || q.length < 2) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      setIsSearching(true);
+      void authApi
+        .searchUsers(q)
+        .then((res) => setSearchResults(res.users))
+        .catch(() => setSearchResults([]))
+        .finally(() => setIsSearching(false));
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [searchQuery, canManageTeam]);
+
+  const handleQuickAddOrInvite = async (
+    target: DirectoryUser,
+    directAdd: boolean,
+  ) => {
+    setError(null);
+    setNotice(null);
+    setIsInviting(true);
+    try {
+      await teamApi.invite({
+        email: target.email,
+        firstName: target.firstName,
+        lastName: target.lastName,
+        role: "member",
+        directAdd,
+      });
+      setNotice(
+        directAdd
+          ? `${target.firstName} ${target.lastName} ajouté directement à l'entreprise.`
+          : `Invitation envoyée à ${target.email}.`,
+      );
+      setSearchQuery("");
+      setSearchResults([]);
+      await loadTeam();
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : "Impossible d'ajouter ce collaborateur.",
+      );
+    } finally {
+      setIsInviting(false);
+    }
+  };
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,11 +140,11 @@ export const TeamPage: React.FC = () => {
       setInviteModalOpen(false);
       await loadTeam();
     } catch (err: unknown) {
-      const msg =
-        err && typeof err === "object" && "message" in err
-          ? String((err as { message: string }).message)
-          : "Impossible d'envoyer l'invitation.";
-      setInviteError(msg);
+      setInviteError(
+        err instanceof Error
+          ? err.message
+          : "Impossible d'envoyer l'invitation.",
+      );
     } finally {
       setIsInviting(false);
     }
@@ -89,11 +156,9 @@ export const TeamPage: React.FC = () => {
       await teamApi.updateRole(member.id, nextRole);
       await loadTeam();
     } catch (err: unknown) {
-      const msg =
-        err && typeof err === "object" && "message" in err
-          ? String((err as { message: string }).message)
-          : "Impossible de modifier le rôle.";
-      setError(msg);
+      setError(
+        err instanceof Error ? err.message : "Impossible de modifier le rôle.",
+      );
     }
   };
 
@@ -103,11 +168,11 @@ export const TeamPage: React.FC = () => {
       await teamApi.removeMember(member.id);
       await loadTeam();
     } catch (err: unknown) {
-      const msg =
-        err && typeof err === "object" && "message" in err
-          ? String((err as { message: string }).message)
-          : "Impossible de retirer ce collaborateur.";
-      setError(msg);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Impossible de retirer ce collaborateur.",
+      );
     }
   };
 
@@ -117,11 +182,11 @@ export const TeamPage: React.FC = () => {
       await teamApi.revokeInvitation(inv.id);
       await loadTeam();
     } catch (err: unknown) {
-      const msg =
-        err && typeof err === "object" && "message" in err
-          ? String((err as { message: string }).message)
-          : "Impossible de révoquer cette invitation.";
-      setError(msg);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Impossible de révoquer cette invitation.",
+      );
     }
   };
 
@@ -137,13 +202,13 @@ export const TeamPage: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-6">
         <div>
           <div className="text-[11px] text-faint uppercase tracking-wider">
-            04 / Module Équipe
+            06 / Module Équipe & Employés
           </div>
           <h1 className="mt-1 text-2xl font-medium tracking-tight">
-            Collaborateurs & Accès
+            Employés, Recherche & Invitations
           </h1>
           <p className="mt-1 text-xs text-muted">
-            Gérez les membres de l'entreprise {currentCompany?.name} et leurs rôles.
+            Recherchez des employés inscrits par email ou nom et invitez-les dans {currentCompany?.name}.
           </p>
         </div>
 
@@ -157,7 +222,7 @@ export const TeamPage: React.FC = () => {
             className="flex items-center gap-2 bg-fg px-4 py-2 text-xs font-medium text-canvas hover:bg-[#dedede] transition-colors whitespace-nowrap"
           >
             <UserPlus size={13} />
-            <span>Inviter un collègue</span>
+            <span>Inviter par email</span>
           </button>
         )}
       </div>
@@ -171,6 +236,129 @@ export const TeamPage: React.FC = () => {
         </div>
       )}
 
+      {notice && (
+        <div className="border border-line-strong bg-panel p-4 text-xs text-fg flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Check size={14} className="text-accent" />
+            <span>{notice}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setNotice(null)}
+            className="text-muted hover:text-fg"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Search Registered Employees on the Platform */}
+      {canManageTeam && (
+        <div className="border border-line bg-panel p-5 space-y-4">
+          <div>
+            <h2 className="text-xs font-medium uppercase tracking-wider text-fg">
+              Ajouter un employé inscrit sur la plateforme
+            </h2>
+            <p className="mt-1 text-[11px] text-muted">
+              Tapez l'adresse email (recommandé) ou le nom d'un compte existant pour le trouver et l'ajouter ou l'inviter.
+            </p>
+          </div>
+
+          <div className="relative">
+            <Search
+              size={14}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint"
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                const next = e.target.value;
+                setSearchQuery(next);
+                if (next.trim().length < 2) setSearchResults([]);
+              }}
+              placeholder="Rechercher par email ou nom (ex: sami@mail.com)..."
+              className="w-full bg-canvas border border-line pl-9 pr-3.5 py-2.5 text-xs text-fg placeholder:text-faint focus:border-fg focus:outline-none"
+            />
+          </div>
+
+          {isSearching && (
+            <p className="text-[11px] text-faint">Recherche des comptes...</p>
+          )}
+
+          {searchQuery.trim().length >= 2 && !isSearching && searchResults.length === 0 && (
+            <div className="border border-line bg-canvas p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <span className="text-muted">
+                Aucun compte trouvé pour « {searchQuery.trim()} ».
+              </span>
+              {searchQuery.includes("@") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInviteEmail(searchQuery.trim());
+                    setInviteModalOpen(true);
+                  }}
+                  className="px-3 py-1.5 bg-fg text-canvas text-xs font-medium hover:bg-[#dedede]"
+                >
+                  Créer une invitation pour {searchQuery.trim()}
+                </button>
+              )}
+            </div>
+          )}
+
+          {searchResults.length > 0 && (
+            <div className="border border-line bg-canvas divide-y divide-line">
+              {searchResults.map((u) => (
+                <div
+                  key={u.id}
+                  className="px-4 py-3 flex flex-wrap items-center justify-between gap-4 text-xs"
+                >
+                  <div>
+                    <p className="text-fg font-medium">
+                      {u.firstName} {u.lastName}{" "}
+                      {u.jobTitle && (
+                        <span className="text-[11px] text-faint font-normal">
+                          · {u.jobTitle}
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-[11px] text-faint">{u.email}</p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {u.alreadyMember ? (
+                      <span className="text-[11px] text-accent">Déjà membre</span>
+                    ) : u.alreadyInvited ? (
+                      <span className="text-[11px] text-muted">Invitation en attente</span>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          disabled={isInviting}
+                          onClick={() => void handleQuickAddOrInvite(u, true)}
+                          className="px-3 py-1.5 bg-fg text-canvas text-[11px] font-medium hover:bg-[#dedede]"
+                        >
+                          Ajouter directement
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isInviting}
+                          onClick={() => void handleQuickAddOrInvite(u, false)}
+                          className="px-3 py-1.5 border border-line text-[11px] text-muted hover:text-fg hover:border-line-strong"
+                        >
+                          Envoyer invitation
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Team Members Table */}
       <div className="border border-line bg-panel overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -211,6 +399,7 @@ export const TeamPage: React.FC = () => {
                           <p className="text-[11px] text-faint flex items-center gap-1.5">
                             <Mail size={11} />
                             {member.email}
+                            {member.jobTitle ? ` · ${member.jobTitle}` : ""}
                           </p>
                         </div>
                       </div>
@@ -244,7 +433,7 @@ export const TeamPage: React.FC = () => {
                       {canEditThisMember ? (
                         <button
                           type="button"
-                          onClick={() => handleRemoveMember(member)}
+                          onClick={() => void handleRemoveMember(member)}
                           className="p-1.5 text-muted hover:text-accent border border-transparent hover:border-line"
                           title="Retirer de l'entreprise"
                           aria-label={`Retirer ${member.firstName} ${member.lastName}`}
@@ -282,13 +471,14 @@ export const TeamPage: React.FC = () => {
                   </p>
                   <p className="text-[11px] text-faint">
                     {inv.email} · {ROLE_LABELS[inv.role]}
+                    {inv.projectName ? ` · Projet : ${inv.projectName}` : ""}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => handleCopyInviteLink(inv)}
+                    onClick={() => void handleCopyInviteLink(inv)}
                     className="flex items-center gap-1.5 border border-line px-3 py-1.5 text-[11px] text-muted hover:text-fg hover:border-line-strong"
                   >
                     {copiedId === inv.id ? (
@@ -306,7 +496,7 @@ export const TeamPage: React.FC = () => {
                   {canManageTeam && (
                     <button
                       type="button"
-                      onClick={() => handleRevokeInvitation(inv)}
+                      onClick={() => void handleRevokeInvitation(inv)}
                       className="p-1.5 text-muted hover:text-accent border border-transparent hover:border-line"
                       title="Révoquer l'invitation"
                       aria-label={`Révoquer ${inv.email}`}
@@ -326,7 +516,7 @@ export const TeamPage: React.FC = () => {
           <div className="w-full max-w-md border border-line-strong bg-panel p-6 space-y-5">
             <div className="flex items-center justify-between border-b border-line pb-3">
               <h2 className="text-sm font-medium text-fg">
-                Inviter un collègue
+                Inviter un employé par email
               </h2>
               <button
                 type="button"
@@ -412,10 +602,10 @@ export const TeamPage: React.FC = () => {
                   className="w-full bg-canvas border border-line px-3 py-2 text-xs text-fg focus:border-fg focus:outline-none"
                 >
                   <option value="member">
-                    Collaborateur (CRM & Opportunités)
+                    Collaborateur (Projets, Stock, CRM & Ventes)
                   </option>
                   <option value="admin">
-                    Administrateur (Équipe, CRM & Réglages)
+                    Administrateur (Équipe, Projets, Stock & Réglages)
                   </option>
                   {currentCompany?.role === "owner" && (
                     <option value="owner">Propriétaire (Accès complet)</option>
@@ -436,7 +626,7 @@ export const TeamPage: React.FC = () => {
                   disabled={isInviting}
                   className="px-4 py-2 bg-fg text-canvas text-xs font-medium hover:bg-[#dedede] disabled:opacity-50"
                 >
-                  {isInviting ? "Création..." : "Créer l'invitation"}
+                  {isInviting ? "Envoi..." : "Envoyer l'invitation"}
                 </button>
               </div>
             </form>

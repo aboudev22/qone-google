@@ -1,8 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowRight, Check, Loader2 } from "lucide-react";
+import { ArrowRight, Building2, Check, Loader2, User } from "lucide-react";
 import { QoneBrand } from "../../shared/components/QoneBrand";
-import { authApi, type InvitationPreview, type Role } from "../../shared/api/auth";
+import {
+  authApi,
+  type AccountType,
+  type InvitationPreview,
+  type Role,
+} from "../../shared/api/auth";
 import { useAuth } from "./AuthContext";
 
 const ROLE_LABELS: Record<Role, string> = {
@@ -21,9 +26,11 @@ export const RegisterPage: React.FC = () => {
     useState<InvitationPreview | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
 
+  const [accountType, setAccountType] = useState<AccountType>("company");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [companyName, setCompanyName] = useState("Studio Qone");
+  const [companyName, setCompanyName] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [seedDemoData, setSeedDemoData] = useState(true);
@@ -45,6 +52,7 @@ export const RegisterPage: React.FC = () => {
       .then((res) => {
         if (!active) return;
         setInvitationPreview(res.invitation);
+        setAccountType("individual");
         setEmail(res.invitation.email);
         if (res.invitation.firstName) setFirstName(res.invitation.firstName);
         if (res.invitation.lastName) setLastName(res.invitation.lastName);
@@ -69,7 +77,7 @@ export const RegisterPage: React.FC = () => {
 
     if (
       !firstName.trim() ||
-      (!inviteToken && !companyName.trim()) ||
+      (!inviteToken && accountType === "company" && !companyName.trim()) ||
       !email.trim() ||
       password.length < 8
     ) {
@@ -86,9 +94,12 @@ export const RegisterPage: React.FC = () => {
         password,
         firstName,
         lastName,
-        companyName: inviteToken ? undefined : companyName,
+        accountType: inviteToken ? "individual" : accountType,
+        companyName:
+          !inviteToken && accountType === "company" ? companyName.trim() : undefined,
+        jobTitle: jobTitle.trim() || undefined,
         inviteToken: inviteToken || undefined,
-        seedDemoData: inviteToken ? false : seedDemoData,
+        seedDemoData: !inviteToken && accountType === "company" ? seedDemoData : false,
       });
       navigate("/app", { replace: true });
     } catch (err: unknown) {
@@ -124,15 +135,23 @@ export const RegisterPage: React.FC = () => {
             <QoneBrand />
             <div className="mt-20 max-w-md">
               <span className="text-[11px] text-faint tracking-wider">
-                {inviteToken ? "INVITATION D'ÉQUIPE" : "ESPACE DE TRAVAIL UNIQUE"}
+                {inviteToken
+                  ? "INVITATION D'ÉQUIPE"
+                  : accountType === "company"
+                  ? "COMPTE ENTREPRISE"
+                  : "COMPTE PARTICULIER & EMPLOYÉ"}
               </span>
               <h1 className="mt-4 text-3xl font-medium tracking-tight leading-snug">
                 {invitationPreview
                   ? `Rejoignez l'espace ${invitationPreview.companyName} sur qone.`
-                  : "Créez l'environnement opérationnel de votre entreprise."}
+                  : accountType === "company"
+                  ? "Créez l'environnement opérationnel de votre entreprise."
+                  : "Créez votre compte employé ou particulier."}
               </h1>
               <p className="mt-4 text-sm text-muted leading-relaxed">
-                Centralisez vos collaborateurs, vos contacts et vos flux dans un ERP modulaire rapide et simple à prendre en main.
+                {accountType === "company"
+                  ? "Invitez vos employés par adresse email, créez des projets, assignez des tâches, gérez vos stocks et tracez chaque action."
+                  : "Inscrivez-vous en quelques secondes avec votre email. Une entreprise pourra vous retrouver par votre nom ou email et vous inviter sur ses projets."}
               </p>
 
               <div className="mt-12 space-y-3">
@@ -140,37 +159,37 @@ export const RegisterPage: React.FC = () => {
                   <span className="size-4 border border-line-strong flex items-center justify-center text-fg bg-panel">
                     <Check size={11} />
                   </span>
-                  Isolation multi-entreprises native
+                  Projets, collaborateurs & assignation des tâches
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted">
                   <span className="size-4 border border-line-strong flex items-center justify-center text-fg bg-panel">
                     <Check size={11} />
                   </span>
-                  Rôles d'équipe et permissions fines
+                  Gestion de stock avec mouvements & alertes
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted">
                   <span className="size-4 border border-line-strong flex items-center justify-center text-fg bg-panel">
                     <Check size={11} />
                   </span>
-                  Import de classeurs Excel & export CSV
+                  Journal d'audit complet de toutes les actions
                 </div>
               </div>
             </div>
           </div>
 
           <div className="text-[11px] text-faint">
-            qone ERP — architecture modulaire
+            qone ERP — persistance SQLite / Cloudflare D1
           </div>
         </div>
 
         <div className="flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-16">
           <div className="w-full max-w-md mx-auto">
-            <div className="mb-8">
+            <div className="mb-6">
               <p className="text-[11px] text-faint tracking-wider">INSCRIPTION</p>
               <h2 className="mt-2 text-2xl font-medium tracking-tight">
                 {invitationPreview
                   ? `Rejoindre ${invitationPreview.companyName}`
-                  : "Créer un compte et votre espace"}
+                  : "Créer un compte"}
               </h2>
               <p className="mt-2 text-xs text-muted">
                 Déjà inscrit ?{" "}
@@ -187,11 +206,52 @@ export const RegisterPage: React.FC = () => {
               </p>
             </div>
 
+            {!inviteToken && (
+              <div className="mb-6 grid grid-cols-2 border border-line bg-panel p-1 gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAccountType("company");
+                    setError(null);
+                  }}
+                  className={`flex items-center justify-center gap-2 py-2.5 text-xs transition-colors ${
+                    accountType === "company"
+                      ? "bg-fg text-canvas font-medium"
+                      : "text-muted hover:text-fg"
+                  }`}
+                >
+                  <Building2 size={14} />
+                  <span>Entreprise</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAccountType("individual");
+                    setError(null);
+                  }}
+                  className={`flex items-center justify-center gap-2 py-2.5 text-xs transition-colors ${
+                    accountType === "individual"
+                      ? "bg-fg text-canvas font-medium"
+                      : "text-muted hover:text-fg"
+                  }`}
+                >
+                  <User size={14} />
+                  <span>Particulier / Employé</span>
+                </button>
+              </div>
+            )}
+
             {invitationPreview && (
               <div className="mb-6 border border-line-strong bg-panel p-4 text-xs text-muted space-y-1">
                 <p className="text-fg font-medium">
                   Invitation pour {invitationPreview.companyName}
                 </p>
+                {invitationPreview.projectName && (
+                  <p>
+                    Projet inclus :{" "}
+                    <span className="text-fg">{invitationPreview.projectName}</span>
+                  </p>
+                )}
                 <p>
                   Rôle attribué :{" "}
                   <span className="text-fg">
@@ -248,7 +308,7 @@ export const RegisterPage: React.FC = () => {
                 </div>
               </div>
 
-              {!inviteToken && (
+              {!inviteToken && accountType === "company" && (
                 <div>
                   <label
                     htmlFor="reg-companyName"
@@ -263,6 +323,25 @@ export const RegisterPage: React.FC = () => {
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     placeholder="Studio Qone"
+                    className="w-full bg-panel border border-line px-3.5 py-2.5 text-xs text-fg placeholder:text-faint focus:border-fg focus:outline-none transition-colors"
+                  />
+                </div>
+              )}
+
+              {!inviteToken && accountType === "individual" && (
+                <div>
+                  <label
+                    htmlFor="reg-jobTitle"
+                    className="block text-[11px] uppercase tracking-wider text-muted mb-1.5"
+                  >
+                    Poste / Spécialité (optionnel)
+                  </label>
+                  <input
+                    id="reg-jobTitle"
+                    type="text"
+                    value={jobTitle}
+                    onChange={(e) => setJobTitle(e.target.value)}
+                    placeholder="Développeur, Gestionnaire stock, Commercial..."
                     className="w-full bg-panel border border-line px-3.5 py-2.5 text-xs text-fg placeholder:text-faint focus:border-fg focus:outline-none transition-colors"
                   />
                 </div>
@@ -305,7 +384,7 @@ export const RegisterPage: React.FC = () => {
                 />
               </div>
 
-              {!inviteToken && (
+              {!inviteToken && accountType === "company" && (
                 <label className="flex items-start gap-2.5 text-xs text-muted pt-1 cursor-pointer">
                   <input
                     type="checkbox"
@@ -314,7 +393,7 @@ export const RegisterPage: React.FC = () => {
                     className="mt-0.5 accent-accent"
                   />
                   <span>
-                    Pré-remplir avec 4 clients et 4 opportunités d'exemple modifiables
+                    Pré-remplir avec un projet, du stock et des clients d'exemple modifiables
                   </span>
                 </label>
               )}
@@ -333,7 +412,9 @@ export const RegisterPage: React.FC = () => {
                   <>
                     {inviteToken
                       ? "Créer mon compte et rejoindre"
-                      : "Créer mon espace qone"}
+                      : accountType === "company"
+                      ? "Créer mon espace entreprise"
+                      : "Créer mon compte particulier"}
                     <ArrowRight
                       size={14}
                       className="transition-transform duration-300 group-hover:translate-x-1"

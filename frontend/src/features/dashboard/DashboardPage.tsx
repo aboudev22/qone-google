@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  AlertTriangle,
   ArrowRight,
   Briefcase,
   Building2,
   Check,
-  FileSpreadsheet,
+  FolderKanban,
+  Mail,
+  Package,
   Users,
+  X,
 } from "lucide-react";
 import { companiesApi, type CompanySummaryResponse } from "../../shared/api/erp";
 import { useAuth } from "../auth/AuthContext";
@@ -19,10 +23,17 @@ const formatEuro = (value: number) =>
   }).format(value);
 
 export const DashboardPage: React.FC = () => {
-  const { user, currentCompany } = useAuth();
+  const {
+    user,
+    currentCompany,
+    pendingInvitations,
+    acceptInvitation,
+    declineInvitation,
+  } = useAuth();
   const [data, setData] = useState<CompanySummaryResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [invBusyId, setInvBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!currentCompany) return;
@@ -36,11 +47,11 @@ export const DashboardPage: React.FC = () => {
         if (active) setData(res);
       } catch (err: unknown) {
         if (!active) return;
-        const msg =
-          err && typeof err === "object" && "message" in err
-            ? String((err as { message: string }).message)
-            : "Impossible de charger les indicateurs.";
-        setError(msg);
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Impossible de charger les indicateurs.",
+        );
       } finally {
         if (active) setIsLoading(false);
       }
@@ -50,11 +61,35 @@ export const DashboardPage: React.FC = () => {
     };
   }, [currentCompany]);
 
+  const handleAcceptInvite = async (id: string) => {
+    setInvBusyId(id);
+    try {
+      await acceptInvitation(id);
+    } finally {
+      setInvBusyId(null);
+    }
+  };
+
+  const handleDeclineInvite = async (id: string) => {
+    setInvBusyId(id);
+    try {
+      await declineInvitation(id);
+    } finally {
+      setInvBusyId(null);
+    }
+  };
+
   const summary = data?.summary;
-  const completedSteps =
-    (summary && summary.membersCount > 1 ? 1 : 0) +
-    (summary && summary.clientsCount > 0 ? 1 : 0) +
-    (summary && summary.opportunitiesCount > 0 ? 1 : 0);
+  const charts = data?.charts;
+  const maxPipelineAmount = Math.max(
+    1,
+    ...(charts?.pipelineByStage.map((p) => p.amount) || [1]),
+  );
+  const maxTaskCount = Math.max(
+    1,
+    ...(charts?.tasksByStatus.map((t) => t.count) || [1]),
+  );
+  const stockTotalCount = Math.max(1, summary?.stockItemsCount || 0);
 
   return (
     <div className="p-6 sm:p-8 lg:p-10 max-w-6xl mx-auto space-y-10">
@@ -63,27 +98,89 @@ export const DashboardPage: React.FC = () => {
           <div>
             <div className="flex items-center gap-2 text-[11px] text-faint tracking-wider">
               <span className="size-1.5 rounded-full bg-accent" />
-              <span>Espace actif · {currentCompany?.name}</span>
+              <span>
+                {currentCompany?.workspaceType === "personal"
+                  ? "Espace particulier"
+                  : "Entreprise active"}{" "}
+                · {currentCompany?.name}
+              </span>
             </div>
             <h1 className="mt-2 text-2xl sm:text-3xl font-medium tracking-tight">
               Bonjour, {user?.firstName}.
             </h1>
             <p className="mt-1 text-xs text-muted">
-              Vue d'ensemble de vos opérations, de votre équipe et de votre activité commerciale.
+              Vue d'ensemble de vos projets, stocks, équipe et activité commerciale.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <Link
-              to="/app/clients"
+              to="/app/projects"
+              className="px-3.5 py-2 border border-line bg-panel text-xs text-fg hover:border-fg transition-colors flex items-center gap-2 whitespace-nowrap"
+            >
+              <FolderKanban size={13} />
+              <span>Projets</span>
+            </Link>
+            <Link
+              to="/app/stock"
               className="px-4 py-2 bg-fg text-canvas text-xs font-medium hover:bg-[#dedede] transition-colors flex items-center gap-2 whitespace-nowrap"
             >
-              <span>Gérer les clients</span>
+              <span>Gérer le stock</span>
               <ArrowRight size={13} />
             </Link>
           </div>
         </div>
       </div>
+
+      {/* Pending Invitations Received */}
+      {pendingInvitations.length > 0 && (
+        <div className="border border-accent/60 bg-panel p-5 space-y-3">
+          <div className="flex items-center gap-2 text-xs font-medium text-fg">
+            <Mail size={14} className="text-accent" />
+            <span>
+              Invitations reçues ({pendingInvitations.length})
+            </span>
+          </div>
+          <div className="divide-y divide-line">
+            {pendingInvitations.map((inv) => (
+              <div
+                key={inv.id}
+                className="py-3 first:pt-1 last:pb-0 flex flex-wrap items-center justify-between gap-4 text-xs"
+              >
+                <div>
+                  <p className="text-fg font-medium">
+                    {inv.companyName}
+                    {inv.projectName ? ` — Projet : ${inv.projectName}` : ""}
+                  </p>
+                  <p className="text-[11px] text-muted">
+                    Invité par {inv.invitedByName}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={invBusyId === inv.id}
+                    onClick={() => void handleAcceptInvite(inv.id)}
+                    className="flex items-center gap-1.5 bg-fg px-3 py-1.5 text-xs font-medium text-canvas hover:bg-[#dedede] disabled:opacity-50"
+                  >
+                    <Check size={12} />
+                    <span>Accepter</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={invBusyId === inv.id}
+                    onClick={() => void handleDeclineInvite(inv.id)}
+                    className="flex items-center gap-1.5 border border-line px-3 py-1.5 text-xs text-muted hover:text-fg"
+                  >
+                    <X size={12} />
+                    <span>Refuser</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="border border-line-strong bg-panel p-4 text-xs text-fg">
@@ -91,56 +188,59 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
+      {/* KPIs */}
       <div>
         <p className="text-[11px] text-faint uppercase tracking-wider mb-4">
           Indicateurs clés
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="border border-line bg-panel p-5">
-            <span className="text-[11px] text-faint uppercase">Collaborateurs</span>
+            <span className="text-[11px] text-faint uppercase">Équipe & Projets</span>
             <div className="mt-3 flex items-baseline justify-between">
               <span className="text-2xl font-medium text-fg tabular-nums">
                 {isLoading ? "—" : summary?.membersCount ?? 1}
               </span>
-              <span className="text-[11px] text-muted">
-                {currentCompany?.role === "owner"
-                  ? "Propriétaire"
-                  : currentCompany?.role === "admin"
-                  ? "Admin"
-                  : "Membre"}
+              <span className="text-[11px] text-muted tabular-nums">
+                {isLoading ? "" : `${summary?.projectsCount ?? 0} projet(s)`}
               </span>
             </div>
           </div>
 
           <div className="border border-line bg-panel p-5">
-            <span className="text-[11px] text-faint uppercase">Clients</span>
+            <span className="text-[11px] text-faint uppercase">Tâches en cours</span>
             <div className="mt-3 flex items-baseline justify-between">
               <span className="text-2xl font-medium text-fg tabular-nums">
-                {isLoading ? "—" : summary?.clientsCount ?? 0}
+                {isLoading ? "—" : summary?.openTasksCount ?? 0}
               </span>
               <span className="text-[11px] text-muted tabular-nums">
-                {isLoading ? "" : `${summary?.activeClientsCount ?? 0} actifs`}
+                {isLoading ? "" : `sur ${summary?.tasksCount ?? 0} total`}
               </span>
             </div>
           </div>
 
           <div className="border border-line bg-panel p-5">
-            <span className="text-[11px] text-faint uppercase">Pipeline en cours</span>
+            <span className="text-[11px] text-faint uppercase">Valeur du stock</span>
             <div className="mt-3 flex items-baseline justify-between gap-2">
               <span className="text-2xl font-medium text-fg tabular-nums">
-                {isLoading ? "—" : formatEuro(summary?.pipelineValue ?? 0)}
+                {isLoading ? "—" : formatEuro(summary?.stockValue ?? 0)}
               </span>
               <span className="text-[11px] text-muted tabular-nums">
-                {isLoading ? "" : `${summary?.openOpportunitiesCount ?? 0} deals`}
+                {isLoading
+                  ? ""
+                  : `${summary?.lowStockCount ?? 0} alerte(s)`}
               </span>
             </div>
           </div>
 
           <div className="border border-line bg-panel p-5">
-            <span className="text-[11px] text-faint uppercase">Ventes gagnées</span>
+            <span className="text-[11px] text-faint uppercase">Pipeline & Ventes</span>
             <div className="mt-3 flex items-baseline justify-between gap-2">
               <span className="text-2xl font-medium text-fg tabular-nums">
-                {isLoading ? "—" : formatEuro(summary?.wonValue ?? 0)}
+                {isLoading
+                  ? "—"
+                  : formatEuro(
+                      (summary?.pipelineValue ?? 0) + (summary?.wonValue ?? 0),
+                    )}
               </span>
               <span className="size-1.5 rounded-full bg-accent shrink-0" />
             </div>
@@ -148,34 +248,170 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Simple Monochrome + Accent Charts */}
+      {charts && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Chart 1: Pipeline commercial par étape */}
+          <div className="border border-line bg-panel p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <div>
+                <p className="text-xs font-medium text-fg">
+                  Pipeline commercial par étape
+                </p>
+                <p className="text-[11px] text-faint mt-0.5">
+                  Répartition des montants sur le cycle de vente
+                </p>
+              </div>
+              <Link
+                to="/app/sales"
+                className="text-[11px] text-muted hover:text-fg"
+              >
+                Ventes →
+              </Link>
+            </div>
+
+            <div className="space-y-3">
+              {charts.pipelineByStage.map((row) => {
+                const widthPct = Math.round((row.amount / maxPipelineAmount) * 100);
+                return (
+                  <div key={row.stage} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted">
+                        {row.label}{" "}
+                        <span className="text-[11px] text-faint tabular-nums">
+                          ({row.count})
+                        </span>
+                      </span>
+                      <span className="text-fg tabular-nums font-medium">
+                        {formatEuro(row.amount)}
+                      </span>
+                    </div>
+                    <div className="h-2 w-full bg-canvas border border-line overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-500 ${
+                          row.stage === "won" ? "bg-accent" : "bg-fg"
+                        }`}
+                        style={{ width: `${row.amount > 0 ? Math.max(4, widthPct) : 0}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Chart 2: Tâches & Santé du Stock */}
+          <div className="border border-line bg-panel p-6 space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-line pb-3">
+                <div>
+                  <p className="text-xs font-medium text-fg">
+                    Avancement des tâches d'équipe
+                  </p>
+                  <p className="text-[11px] text-faint mt-0.5">
+                    Répartition actuelle par statut
+                  </p>
+                </div>
+                <Link
+                  to="/app/projects"
+                  className="text-[11px] text-muted hover:text-fg"
+                >
+                  Projets →
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-4 gap-3 items-end h-28 pt-2">
+                {charts.tasksByStatus.map((item) => {
+                  const pct = Math.round((item.count / maxTaskCount) * 100);
+                  return (
+                    <div
+                      key={item.status}
+                      className="flex flex-col items-center justify-end h-full gap-1.5"
+                    >
+                      <span className="text-[11px] text-fg tabular-nums">
+                        {item.count}
+                      </span>
+                      <div className="w-full flex-1 bg-canvas border border-line flex items-end">
+                        <div
+                          className={`w-full transition-all duration-500 ${
+                            item.status === "done"
+                              ? "bg-accent"
+                              : item.status === "in_progress"
+                              ? "bg-fg"
+                              : "bg-muted/60"
+                          }`}
+                          style={{
+                            height: `${item.count > 0 ? Math.max(12, pct) : 0}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-[10px] text-faint truncate max-w-full">
+                        {item.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="border-t border-line pt-4 space-y-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-fg font-medium">État du stock</span>
+                <span className="text-[11px] text-faint tabular-nums">
+                  {summary?.stockItemsCount ?? 0} référence(s)
+                </span>
+              </div>
+              <div className="h-2.5 w-full bg-canvas border border-line flex overflow-hidden">
+                <div
+                  className="bg-fg h-full"
+                  style={{
+                    width: `${
+                      (charts.stockHealth.healthy / stockTotalCount) * 100
+                    }%`,
+                  }}
+                />
+                <div
+                  className="bg-accent h-full"
+                  style={{
+                    width: `${
+                      ((charts.stockHealth.low + charts.stockHealth.out) /
+                        stockTotalCount) *
+                      100
+                    }%`,
+                  }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-faint tabular-nums">
+                <span>Sain : {charts.stockHealth.healthy}</span>
+                <span>
+                  Stock bas / rupture :{" "}
+                  {charts.stockHealth.low + charts.stockHealth.out}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Actions */}
       <div>
         <div className="flex items-center justify-between border-t border-line pt-6 mb-4">
           <p className="text-[11px] text-faint uppercase tracking-wider">
-            Mise en place de l'espace
+            Accès rapide aux modules
           </p>
-          <span className="text-[11px] text-faint tabular-nums">
-            {completedSteps} sur 3 complétées
-          </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="border border-line bg-panel p-6 flex flex-col justify-between hover:border-line-strong transition-colors">
             <div>
-              <div className="flex items-center justify-between">
-                <div className="size-9 border border-line bg-panel-raised flex items-center justify-center text-muted">
-                  <Users size={17} />
-                </div>
-                {summary && summary.membersCount > 1 && (
-                  <span className="size-5 border border-line-strong flex items-center justify-center text-accent">
-                    <Check size={12} />
-                  </span>
-                )}
+              <div className="size-9 border border-line bg-panel-raised flex items-center justify-center text-muted">
+                <Users size={17} />
               </div>
               <h3 className="mt-4 text-sm font-medium text-fg">
-                Inviter votre équipe
+                Rechercher & inviter des employés
               </h3>
               <p className="mt-2 text-xs text-muted leading-relaxed">
-                Ajoutez vos collègues et attribuez les rôles d'administrateur ou de collaborateur.
+                Trouvez les employés inscrits par email ou nom et intégrez-les à l'entreprise.
               </p>
             </div>
             <Link
@@ -189,67 +425,90 @@ export const DashboardPage: React.FC = () => {
 
           <div className="border border-line bg-panel p-6 flex flex-col justify-between hover:border-line-strong transition-colors">
             <div>
-              <div className="flex items-center justify-between">
-                <div className="size-9 border border-line bg-panel-raised flex items-center justify-center text-muted">
-                  <FileSpreadsheet size={17} />
-                </div>
-                {summary && summary.clientsCount > 0 && (
-                  <span className="size-5 border border-line-strong flex items-center justify-center text-accent">
-                    <Check size={12} />
-                  </span>
-                )}
+              <div className="size-9 border border-line bg-panel-raised flex items-center justify-center text-muted">
+                <Package size={17} />
               </div>
               <h3 className="mt-4 text-sm font-medium text-fg">
-                Importer ou créer vos clients
+                Piloter le stock & inventaire
               </h3>
               <p className="mt-2 text-xs text-muted leading-relaxed">
-                Chargez un classeur Excel (.xlsx) avec aperçu et mapping ou saisissez vos fiches clients.
+                Enregistrez vos entrées, sorties et seuils d'alerte de marchandises.
               </p>
             </div>
             <Link
-              to="/app/clients"
+              to="/app/stock"
               className="mt-6 inline-flex items-center gap-2 text-xs text-fg hover:underline underline-offset-4"
             >
-              Ouvrir le module CRM
+              Ouvrir le stock
               <ArrowRight size={13} />
             </Link>
           </div>
 
           <div className="border border-line bg-panel p-6 flex flex-col justify-between hover:border-line-strong transition-colors">
             <div>
-              <div className="flex items-center justify-between">
-                <div className="size-9 border border-line bg-panel-raised flex items-center justify-center text-muted">
-                  <Briefcase size={17} />
-                </div>
-                {summary && summary.opportunitiesCount > 0 && (
-                  <span className="size-5 border border-line-strong flex items-center justify-center text-accent">
-                    <Check size={12} />
-                  </span>
-                )}
+              <div className="size-9 border border-line bg-panel-raised flex items-center justify-center text-muted">
+                <Briefcase size={17} />
               </div>
               <h3 className="mt-4 text-sm font-medium text-fg">
-                Suivre vos opportunités
+                Clients & Opportunités
               </h3>
               <p className="mt-2 text-xs text-muted leading-relaxed">
-                Pilotez votre pipeline de ventes étape par étape et suivez le chiffre d'affaires prévisionnel.
+                Centralisez vos fiches clients, classeurs Excel et deals commerciaux.
               </p>
             </div>
             <Link
-              to="/app/sales"
+              to="/app/clients"
               className="mt-6 inline-flex items-center gap-2 text-xs text-fg hover:underline underline-offset-4"
             >
-              Accéder aux ventes
+              Ouvrir le CRM
               <ArrowRight size={13} />
             </Link>
           </div>
         </div>
       </div>
 
+      {/* Low Stock Alerts + Recent Activities */}
       {data &&
-        (data.recentClients.length > 0 ||
+        (data.lowStockItems.length > 0 ||
+          data.recentClients.length > 0 ||
           data.recentOpportunities.length > 0 ||
           data.recentActivities.length > 0) && (
           <div className="space-y-6 border-t border-line pt-6">
+            {data.lowStockItems.length > 0 && (
+              <div className="border border-line bg-panel">
+                <div className="px-5 py-3.5 border-b border-line flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={14} className="text-accent" />
+                    <span className="text-xs font-medium text-fg">
+                      Alertes réapprovisionnement
+                    </span>
+                  </div>
+                  <Link
+                    to="/app/stock"
+                    className="text-[11px] text-muted hover:text-fg"
+                  >
+                    Voir le stock
+                  </Link>
+                </div>
+                <div className="divide-y divide-line">
+                  {data.lowStockItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="px-5 py-3 flex items-center justify-between text-xs"
+                    >
+                      <div>
+                        <span className="text-fg font-medium">{item.name}</span>{" "}
+                        <span className="text-[11px] text-faint">({item.sku})</span>
+                      </div>
+                      <span className="text-accent tabular-nums">
+                        {item.quantity} / min {item.minQuantity} {item.unit}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="border border-line bg-panel">
                 <div className="px-5 py-3.5 border-b border-line flex items-center justify-between">
@@ -343,11 +602,14 @@ export const DashboardPage: React.FC = () => {
               <div className="border border-line bg-panel">
                 <div className="px-5 py-3.5 border-b border-line flex items-center justify-between">
                   <span className="text-xs font-medium text-fg">
-                    Historique des actions récentes
+                    Dernières entrées du journal (Logs)
                   </span>
-                  <span className="text-[11px] text-faint">
-                    Dernières actions de l'équipe
-                  </span>
+                  <Link
+                    to="/app/logs"
+                    className="text-[11px] text-muted hover:text-fg"
+                  >
+                    Tout l'historique →
+                  </Link>
                 </div>
                 <div className="divide-y divide-line">
                   {data.recentActivities.map((act) => (

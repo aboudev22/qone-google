@@ -10,7 +10,7 @@ export const SettingsPage: React.FC = () => {
   const [name, setName] = useState(currentCompany?.name ?? "");
   const [slug, setSlug] = useState(currentCompany?.slug ?? "");
   const [enabledModules, setEnabledModules] = useState<ModuleKey[]>(
-    currentCompany?.enabledModules ?? ["crm", "sales"],
+    currentCompany?.enabledModules ?? ["crm", "sales", "stock", "projects"],
   );
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
