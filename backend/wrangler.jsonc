@@ -5,12 +5,12 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "qone-db",
-      "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID",
-      "migrations_dir": "migrations"
-    }
+      "database_name": "ma-base-de-donnees",
+      "database_id": "92b28819-bc25-42fb-ab43-ec8b7b0fe9b4",
+      "migrations_dir": "migrations",
+    },
   ],
   "vars": {
-    "CORS_ORIGIN": "http://localhost:3000"
-  }
+    "CORS_ORIGIN": "https://qone-google.aboubakarjay2.workers.dev",
+  },
 }
