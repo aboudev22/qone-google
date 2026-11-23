@@ -18,7 +18,7 @@ import {
   type StockMovementType,
 } from "../../shared/api/erp";
 
-const formatEuro = (value: number) =>
+const formatXaf = (value: number) =>
   new Intl.NumberFormat("fr-FR", {
     style: "currency",
     currency: "EUR",
@@ -262,7 +262,7 @@ export const StockPage: React.FC = () => {
         <div className="border border-line bg-panel p-5">
           <span className="text-[11px] text-faint uppercase">Valeur totale</span>
           <div className="mt-2 text-2xl font-medium text-fg tabular-nums">
-            {formatEuro(summary.totalValue)}
+            {formatXaf(summary.totalValue)}
           </div>
         </div>
 
@@ -385,7 +385,7 @@ export const StockPage: React.FC = () => {
                       {item.minQuantity} {item.unit}
                     </td>
                     <td className="py-3.5 px-4 text-right text-fg tabular-nums">
-                      {formatEuro(item.unitPrice)}
+                      {formatXaf(item.unitPrice)}
                     </td>
                     <td className="py-3.5 px-4 text-muted">
                       {item.location || "—"}

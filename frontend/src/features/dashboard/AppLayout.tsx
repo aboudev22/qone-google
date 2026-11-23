@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   Building2,
@@ -6,7 +6,9 @@ import {
   ChevronDown,
   LogOut,
   Menu,
+  Moon,
   Plus,
+  Sun,
   User,
   X,
 } from "lucide-react";
@@ -38,6 +40,23 @@ export const AppLayout: React.FC = () => {
   const [newCompanyName, setNewCompanyName] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
   const [isSubmittingCompany, setIsSubmittingCompany] = useState(false);
+
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    return (localStorage.getItem("qone_theme") as "dark" | "light") || "dark";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("qone_theme", theme);
+    if (theme === "light") {
+      document.documentElement.classList.add("theme-light");
+    } else {
+      document.documentElement.classList.remove("theme-light");
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  };
 
   const visibleModules = useMemo(() => {
     const enabled = currentCompany?.enabledModules;
@@ -160,14 +179,24 @@ export const AppLayout: React.FC = () => {
     <div className="min-h-screen bg-canvas text-fg flex flex-col lg:flex-row">
       <header className="lg:hidden border-b border-line px-5 py-3.5 flex items-center justify-between bg-canvas/95 backdrop-blur sticky top-0 z-50">
         <QoneBrand />
-        <button
-          type="button"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 border border-line text-muted hover:text-fg focus:outline-none"
-          aria-label="Ouvrir le menu"
-        >
-          {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="p-2 border border-line text-muted hover:text-fg focus:outline-none"
+            title="Changer le thème (Noir / Blanc)"
+          >
+            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 border border-line text-muted hover:text-fg focus:outline-none"
+            aria-label="Ouvrir le menu"
+          >
+            {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+        </div>
       </header>
 
       {mobileMenuOpen && (
@@ -212,14 +241,24 @@ export const AppLayout: React.FC = () => {
               </p>
               <p className="text-[11px] text-faint truncate">{user?.email}</p>
             </div>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 border border-line py-2.5 text-xs text-muted hover:text-fg hover:border-line-strong transition-colors"
-            >
-              <LogOut size={14} />
-              Déconnexion
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="flex-1 flex items-center justify-center gap-2 border border-line py-2.5 text-xs text-muted hover:text-fg hover:border-line-strong transition-colors"
+              >
+                {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+                <span>{theme === "dark" ? "Mode Blanc" : "Mode Noir"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex-1 flex items-center justify-center gap-2 border border-line py-2.5 text-xs text-muted hover:text-fg hover:border-line-strong transition-colors"
+              >
+                <LogOut size={14} />
+                Déconnexion
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -280,15 +319,26 @@ export const AppLayout: React.FC = () => {
               </p>
               <p className="text-[10px] text-faint truncate">{user?.email}</p>
             </div>
-            <button
-              type="button"
-              onClick={handleLogout}
-              title="Déconnexion"
-              aria-label="Déconnexion"
-              className="p-2 text-muted hover:text-fg hover:bg-panel border border-transparent hover:border-line transition-colors"
-            >
-              <LogOut size={15} />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={toggleTheme}
+                title={theme === "dark" ? "Passer en mode Blanc" : "Passer en mode Noir"}
+                aria-label="Changer le thème"
+                className="p-2 text-muted hover:text-fg hover:bg-panel border border-transparent hover:border-line transition-colors"
+              >
+                {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                title="Déconnexion"
+                aria-label="Déconnexion"
+                className="p-2 text-muted hover:text-fg hover:bg-panel border border-transparent hover:border-line transition-colors"
+              >
+                <LogOut size={15} />
+              </button>
+            </div>
           </div>
         </div>
       </aside>

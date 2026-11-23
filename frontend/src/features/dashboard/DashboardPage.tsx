@@ -15,12 +15,24 @@ import {
 import { companiesApi, type CompanySummaryResponse } from "../../shared/api/erp";
 import { useAuth } from "../auth/AuthContext";
 
-const formatEuro = (value: number) =>
-  new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 0,
-  }).format(value);
+const formatXaf = (value: number) =>
+  `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(value)} F CFA`;
+
+const STAGE_COLORS: Record<string, string> = {
+  prospecting: "bg-blue-500",
+  qualification: "bg-indigo-500",
+  proposal: "bg-amber-500",
+  negotiation: "bg-cyan-500",
+  won: "bg-emerald-500",
+  lost: "bg-rose-500",
+};
+
+const TASK_COLORS: Record<string, string> = {
+  todo: "bg-slate-400",
+  in_progress: "bg-amber-500",
+  review: "bg-violet-500",
+  done: "bg-emerald-500",
+};
 
 export const DashboardPage: React.FC = () => {
   const {
@@ -132,7 +144,6 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Pending Invitations Received */}
       {pendingInvitations.length > 0 && (
         <div className="border border-accent/60 bg-panel p-5 space-y-3">
           <div className="flex items-center gap-2 text-xs font-medium text-fg">
@@ -222,7 +233,7 @@ export const DashboardPage: React.FC = () => {
             <span className="text-[11px] text-faint uppercase">Valeur du stock</span>
             <div className="mt-3 flex items-baseline justify-between gap-2">
               <span className="text-2xl font-medium text-fg tabular-nums">
-                {isLoading ? "—" : formatEuro(summary?.stockValue ?? 0)}
+                {isLoading ? "—" : formatXaf(summary?.stockValue ?? 0)}
               </span>
               <span className="text-[11px] text-muted tabular-nums">
                 {isLoading
@@ -238,7 +249,7 @@ export const DashboardPage: React.FC = () => {
               <span className="text-2xl font-medium text-fg tabular-nums">
                 {isLoading
                   ? "—"
-                  : formatEuro(
+                  : formatXaf(
                       (summary?.pipelineValue ?? 0) + (summary?.wonValue ?? 0),
                     )}
               </span>
@@ -248,7 +259,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Simple Monochrome + Accent Charts */}
+      {/* Colorful Charts */}
       {charts && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Chart 1: Pipeline commercial par étape */}
@@ -259,7 +270,7 @@ export const DashboardPage: React.FC = () => {
                   Pipeline commercial par étape
                 </p>
                 <p className="text-[11px] text-faint mt-0.5">
-                  Répartition des montants sur le cycle de vente
+                  Répartition des montants (F CFA)
                 </p>
               </div>
               <Link
@@ -270,28 +281,28 @@ export const DashboardPage: React.FC = () => {
               </Link>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               {charts.pipelineByStage.map((row) => {
                 const widthPct = Math.round((row.amount / maxPipelineAmount) * 100);
+                const barColor = STAGE_COLORS[row.stage] || "bg-indigo-500";
                 return (
                   <div key={row.stage} className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted">
-                        {row.label}{" "}
+                      <span className="flex items-center gap-2 text-muted">
+                        <span className={`size-2 rounded-full ${barColor}`} />
+                        <span>{row.label}</span>
                         <span className="text-[11px] text-faint tabular-nums">
                           ({row.count})
                         </span>
                       </span>
                       <span className="text-fg tabular-nums font-medium">
-                        {formatEuro(row.amount)}
+                        {formatXaf(row.amount)}
                       </span>
                     </div>
-                    <div className="h-2 w-full bg-canvas border border-line overflow-hidden">
+                    <div className="h-2.5 w-full bg-canvas border border-line overflow-hidden rounded-sm">
                       <div
-                        className={`h-full transition-all duration-500 ${
-                          row.stage === "won" ? "bg-accent" : "bg-fg"
-                        }`}
-                        style={{ width: `${row.amount > 0 ? Math.max(4, widthPct) : 0}%` }}
+                        className={`h-full transition-all duration-500 ${barColor}`}
+                        style={{ width: `${row.amount > 0 ? Math.max(6, widthPct) : 0}%` }}
                       />
                     </div>
                   </div>
@@ -323,25 +334,20 @@ export const DashboardPage: React.FC = () => {
               <div className="grid grid-cols-4 gap-3 items-end h-28 pt-2">
                 {charts.tasksByStatus.map((item) => {
                   const pct = Math.round((item.count / maxTaskCount) * 100);
+                  const taskBarColor = TASK_COLORS[item.status] || "bg-indigo-500";
                   return (
                     <div
                       key={item.status}
                       className="flex flex-col items-center justify-end h-full gap-1.5"
                     >
-                      <span className="text-[11px] text-fg tabular-nums">
+                      <span className="text-[11px] text-fg tabular-nums font-medium">
                         {item.count}
                       </span>
-                      <div className="w-full flex-1 bg-canvas border border-line flex items-end">
+                      <div className="w-full flex-1 bg-canvas border border-line flex items-end rounded-sm overflow-hidden">
                         <div
-                          className={`w-full transition-all duration-500 ${
-                            item.status === "done"
-                              ? "bg-accent"
-                              : item.status === "in_progress"
-                              ? "bg-fg"
-                              : "bg-muted/60"
-                          }`}
+                          className={`w-full transition-all duration-500 ${taskBarColor}`}
                           style={{
-                            height: `${item.count > 0 ? Math.max(12, pct) : 0}%`,
+                            height: `${item.count > 0 ? Math.max(14, pct) : 0}%`,
                           }}
                         />
                       </div>
@@ -361,31 +367,47 @@ export const DashboardPage: React.FC = () => {
                   {summary?.stockItemsCount ?? 0} référence(s)
                 </span>
               </div>
-              <div className="h-2.5 w-full bg-canvas border border-line flex overflow-hidden">
+              <div className="h-3 w-full bg-canvas border border-line flex overflow-hidden rounded-sm">
                 <div
-                  className="bg-fg h-full"
+                  className="bg-emerald-500 h-full transition-all"
                   style={{
                     width: `${
                       (charts.stockHealth.healthy / stockTotalCount) * 100
                     }%`,
                   }}
+                  title="Stock sain"
                 />
                 <div
-                  className="bg-accent h-full"
+                  className="bg-amber-500 h-full transition-all"
                   style={{
                     width: `${
-                      ((charts.stockHealth.low + charts.stockHealth.out) /
-                        stockTotalCount) *
-                      100
+                      (charts.stockHealth.low / stockTotalCount) * 100
                     }%`,
                   }}
+                  title="Stock bas"
+                />
+                <div
+                  className="bg-rose-500 h-full transition-all"
+                  style={{
+                    width: `${
+                      (charts.stockHealth.out / stockTotalCount) * 100
+                    }%`,
+                  }}
+                  title="Rupture"
                 />
               </div>
               <div className="flex items-center justify-between text-[11px] text-faint tabular-nums">
-                <span>Sain : {charts.stockHealth.healthy}</span>
-                <span>
-                  Stock bas / rupture :{" "}
-                  {charts.stockHealth.low + charts.stockHealth.out}
+                <span className="flex items-center gap-1.5">
+                  <span className="size-2 rounded-full bg-emerald-500" />
+                  Sain : {charts.stockHealth.healthy}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="size-2 rounded-full bg-amber-500" />
+                  Bas : {charts.stockHealth.low}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="size-2 rounded-full bg-rose-500" />
+                  Rupture : {charts.stockHealth.out}
                 </span>
               </div>
             </div>
@@ -457,10 +479,10 @@ export const DashboardPage: React.FC = () => {
               </p>
             </div>
             <Link
-              to="/app/clients"
+              to="/app/sales"
               className="mt-6 inline-flex items-center gap-2 text-xs text-fg hover:underline underline-offset-4"
             >
-              Ouvrir le CRM
+              Ouvrir le pipeline ventes
               <ArrowRight size={13} />
             </Link>
           </div>
@@ -589,7 +611,7 @@ export const DashboardPage: React.FC = () => {
                           </p>
                         </div>
                         <span className="text-xs text-fg tabular-nums shrink-0">
-                          {formatEuro(opp.amount)}
+                          {formatXaf(opp.amount)}
                         </span>
                       </div>
                     ))}

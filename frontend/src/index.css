@@ -1,8 +1,5 @@
 @import "tailwindcss";
 
-/* Self-hosted latin subsets from Google Fonts: no third-party request, no
-   flash of fallback type on first paint, and the licence files stay with the
-   app. The latin subset includes French accents, œ and the euro sign. */
 @font-face {
   font-family: "Google Sans Code";
   font-style: normal;
@@ -32,6 +29,19 @@
   --color-muted: #a3a3a3;
   --color-faint: #6f6f6f;
   --color-accent: #ff5c9e;
+}
+
+.theme-light {
+  color-scheme: light;
+  --color-canvas: #ffffff;
+  --color-panel: #f8fafc;
+  --color-panel-raised: #f1f5f9;
+  --color-line: #e2e8f0;
+  --color-line-strong: #cbd5e1;
+  --color-fg: #0f172a;
+  --color-muted: #475569;
+  --color-faint: #64748b;
+  --color-accent: #f59e0b;
 }
 
 @layer base {
@@ -73,8 +83,6 @@
   }
 }
 
-/* Fine grid used behind the hero. It gives the monochrome layout depth
-   without adding a competing colour. */
 .hero-grid {
   background-image:
     linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
@@ -93,8 +101,6 @@
   will-change: transform;
 }
 
-/* The illustration and copy sit on separate depth planes so the tilt reads
-   as a physical card instead of a flat CSS rotation. */
 .tilt-depth-sm {
   transform: translateZ(18px);
 }

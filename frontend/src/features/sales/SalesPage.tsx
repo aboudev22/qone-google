@@ -27,12 +27,8 @@ const STAGES: Array<{ key: OpportunityStage; label: string }> = [
   { key: "lost", label: "Perdu" },
 ];
 
-const formatEuro = (value: number) =>
-  new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 0,
-  }).format(value);
+const formatXaf = (value: number) =>
+  `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(value)} F CFA`;
 
 export const SalesPage: React.FC = () => {
   const { currentCompany } = useAuth();
@@ -254,7 +250,7 @@ export const SalesPage: React.FC = () => {
           <span className="text-[11px] text-faint uppercase">Pipeline actif</span>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-xl font-medium text-fg tabular-nums">
-              {formatEuro(metrics.openTotal)}
+              {formatXaf(metrics.openTotal)}
             </span>
             <span className="text-[11px] text-muted tabular-nums">
               {metrics.openCount} en cours
@@ -268,7 +264,7 @@ export const SalesPage: React.FC = () => {
           </span>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-xl font-medium text-fg tabular-nums">
-              {formatEuro(metrics.weightedTotal)}
+              {formatXaf(metrics.weightedTotal)}
             </span>
             <span className="text-[11px] text-muted">Selon probabilité</span>
           </div>
@@ -280,7 +276,7 @@ export const SalesPage: React.FC = () => {
           </span>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-xl font-medium text-fg tabular-nums">
-              {formatEuro(metrics.wonTotal)}
+              {formatXaf(metrics.wonTotal)}
             </span>
             <span className="size-1.5 rounded-full bg-accent" />
           </div>
@@ -351,7 +347,7 @@ export const SalesPage: React.FC = () => {
                 <div className="px-4 py-3 border-b border-line bg-panel-raised flex items-center justify-between text-xs">
                   <span className="font-medium text-fg">{col.label}</span>
                   <span className="text-[11px] text-faint tabular-nums">
-                    {items.length} · {formatEuro(colTotal)}
+                    {items.length} · {formatXaf(colTotal)}
                   </span>
                 </div>
 
@@ -397,7 +393,7 @@ export const SalesPage: React.FC = () => {
 
                         <div className="flex items-center justify-between text-xs pt-1 border-t border-line">
                           <span className="text-fg font-medium tabular-nums">
-                            {formatEuro(opp.amount)}
+                            {formatXaf(opp.amount)}
                           </span>
                           <span className="text-[11px] text-faint tabular-nums">
                             {opp.probability}%
@@ -467,7 +463,7 @@ export const SalesPage: React.FC = () => {
                     </select>
                   </td>
                   <td className="py-3 px-4 text-right tabular-nums text-fg">
-                    {formatEuro(opp.amount)}
+                    {formatXaf(opp.amount)}
                   </td>
                   <td className="py-3 px-4 text-right tabular-nums text-muted">
                     {opp.probability}%

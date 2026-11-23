@@ -162,7 +162,7 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
                 type="text"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="+33 6 12 34 56 78"
+                placeholder="+237 690 90 90 90"
                 className="w-full bg-canvas border border-line px-3.5 py-2 text-xs text-fg focus:border-fg focus:outline-none"
               />
             </div>
