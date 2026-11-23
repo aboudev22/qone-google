@@ -49,7 +49,6 @@ export const RegisterPage: React.FC = () => {
   const [jobTitle, setJobTitle] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [seedDemoData, setSeedDemoData] = useState(true);
 
   // Onboarding wizard states
   const [step, setStep] = useState<"form" | "customizing" | "animating">("form");
@@ -122,7 +121,6 @@ export const RegisterPage: React.FC = () => {
           !inviteToken && accountType === "company" ? companyName.trim() : undefined,
         jobTitle: jobTitle.trim() || undefined,
         inviteToken: inviteToken || undefined,
-        seedDemoData: !inviteToken && accountType === "company" ? seedDemoData : false,
       });
 
       // If invite token, skip customization and go straight to app
@@ -573,19 +571,7 @@ export const RegisterPage: React.FC = () => {
                 />
               </div>
 
-              {!inviteToken && accountType === "company" && (
-                <label className="flex items-start gap-2.5 text-xs text-muted pt-1 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={seedDemoData}
-                    onChange={(e) => setSeedDemoData(e.target.checked)}
-                    className="mt-0.5 accent-accent"
-                  />
-                  <span>
-                    Pré-remplir avec un projet, du stock et des clients d'exemple modifiables
-                  </span>
-                </label>
-              )}
+
 
               <button
                 type="submit"

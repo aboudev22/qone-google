@@ -35,7 +35,6 @@ export async function handleAuthRoutes(
     const companyNameInput = String(body.companyName || "").trim();
     const jobTitle = String(body.jobTitle || "").trim();
     const inviteToken = String(body.inviteToken || "").trim();
-    const seedDemoData = Boolean(body.seedDemoData);
 
     if (!EMAIL_RE.test(email)) {
       throw new HttpError(400, "Adresse email invalide.");
@@ -133,10 +132,6 @@ export async function handleAuthRoutes(
         action: "company.created",
         summary: `Entreprise « ${companyNameInput} » créée par ${actorName}`,
       });
-
-      if (seedDemoData) {
-        await seedDemoDataForCompany(db, companyId, userRow);
-      }
     } else {
       // Individual / Employee personal workspace
       const personalName = `Espace personnel — ${firstName}`;

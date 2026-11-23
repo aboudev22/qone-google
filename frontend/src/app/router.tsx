@@ -9,6 +9,7 @@ import { ProjectsPage } from "../features/projects/ProjectsPage";
 import { StockPage } from "../features/stock/StockPage";
 import { ClientsPage } from "../features/crm/ClientsPage";
 import { SalesPage } from "../features/sales/SalesPage";
+import { CaissePage } from "../features/sales/CaissePage";
 import { TeamPage } from "../features/users/TeamPage";
 import { LogsPage } from "../features/logs/LogsPage";
 import { SettingsPage } from "../features/settings/SettingsPage";
@@ -60,6 +61,10 @@ export const router = createBrowserRouter(
         {
           path: "sales",
           element: <SalesPage />,
+        },
+        {
+          path: "caisse",
+          element: <CaissePage />,
         },
         {
           path: "team",

@@ -58,7 +58,6 @@ export interface RegisterInput {
   companyName?: string;
   jobTitle?: string;
   inviteToken?: string;
-  seedDemoData?: boolean;
 }
 
 export interface LoginInput {
